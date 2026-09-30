@@ -1,0 +1,69 @@
+# 仅需此文件、config.yaml 和 .env：docker compose up -d --wait
+name: airmux
+services:
+  postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airmux
+      POSTGRES_DB: airmux
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 填写数据库密码}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airmux -d airmux"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  api:
+    platform: linux/amd64
+    image: ${AIRMUX_APP_IMAGE:-${AIRMUX_IMAGE_REPOSITORY}:${AIRMUX_VERSION}}
+    restart: unless-stopped
+    depends_on:
+      postgres: {condition: service_healthy}
+    entrypoint: ["/usr/local/bin/airmux-api"]
+    environment:
+      AIRMUX_CONFIG: /etc/airmux/config.yaml
+    volumes:
+      - type: bind
+        source: ./config.yaml
+        target: /etc/airmux/config.yaml
+        read_only: true
+        bind: {create_host_path: false}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/health/ready',timeout=2)"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+  frontend:
+    platform: linux/amd64
+    image: ${AIRMUX_APP_IMAGE:-${AIRMUX_IMAGE_REPOSITORY}:${AIRMUX_VERSION}}
+    restart: unless-stopped
+    depends_on:
+      api: {condition: service_healthy}
+    entrypoint: ["/usr/sbin/nginx"]
+    command: ["-g", "daemon off;"]
+    ports:
+      - "${AIRMUX_HTTP_BIND:-0.0.0.0}:${AIRMUX_HTTP_PORT:-8080}:80"
+  updater:
+    platform: linux/amd64
+    image: ${AIRMUX_IMAGE_REPOSITORY}:${AIRMUX_VERSION}
+    restart: unless-stopped
+    entrypoint: ["python3", "/opt/airmux/deploy/updater.py"]
+    environment:
+      AIRMUX_CONFIG: /etc/airmux/config.yaml
+    volumes:
+      - type: bind
+        source: ./config.yaml
+        target: /etc/airmux/config.yaml
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${AIRMUX_DEPLOY_DIR:-/srv/airmux}
+        target: ${AIRMUX_DEPLOY_DIR:-/srv/airmux}
+        bind: {create_host_path: false}
+      - /var/run/docker.sock:/var/run/docker.sock
+      - updater-data:/var/lib/airmux-updater
+volumes:
+  postgres-data:
+  updater-data:

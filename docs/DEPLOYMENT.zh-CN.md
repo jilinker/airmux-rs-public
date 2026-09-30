@@ -1,103 +1,69 @@
-# Docker Compose 部署
+# Docker Compose 部署：三步启动
 
 **简体中文** · [English](DEPLOYMENT.md) · [返回 README](../README.md)
 
-适用于 Linux `amd64`、Docker Engine 与 Compose 插件。**Compose 负责服务编排，运行参数集中在 `config.yaml`，通过只读挂载交给 API 和更新程序。**首次安装无需手动执行 SQL、迁移或创建管理员。
+准备好 Docker Engine 和 Compose 插件即可，支持 `linux/amd64`。只需 **`config.yaml`、`compose.yaml`、`.env`** 三个文件，无需克隆仓库、安装 Python 或执行初始化脚本。
 
-## 1. 准备发行目录
+## 1. 下载配置，按中文注释修改
 
-安装 Docker Engine 与 Compose 插件，确认 `docker compose version` 可用。Debian / Ubuntu 可安装其余依赖：
-
-```sh
-sudo apt-get update
-sudo apt-get install -y git python3 python3-yaml
-sudo mkdir -p /srv/airmux
-sudo chown "$USER":"$USER" /srv/airmux
-git clone https://github.com/jilinker/airmux-rs-public.git airmux-distribution
-cd airmux-distribution
-```
-
-其他系统使用 `python3 -m pip install -r deploy/requirements.txt` 安装 PyYAML。
-
-## 2. 首次生成配置
+在服务器创建部署目录，下载公共仓库的两个 YAML 文件：
 
 ```sh
-python3 deploy/manage.py init --config /srv/airmux/config.yaml
-```
-
-此命令从固定的公共 Release 读取镜像摘要，生成数据库密码、初始管理员密码、32 字节加密密钥和更新凭据。文件已存在时拒绝覆盖。离线安装可以指定本机已有的镜像：
-
-```sh
-python3 deploy/manage.py init --config /srv/airmux/config.yaml --image registry.example.com/team/airmux@sha256:REPLACE_WITH_DIGEST
-```
-
-用编辑器打开 `/srv/airmux/config.yaml`，保存初始管理员密码，并修改访问来源和端口。配置文件保持 `0600`；不要把它提交到 Git。修改配置后，在发行目录重新生成编排参数：
-
-```sh
-python3 deploy/manage.py render --config /srv/airmux/config.yaml
-```
-
-## 3. 用 Compose 启动
-
-```sh
+mkdir -p /srv/airmux
 cd /srv/airmux
-docker compose --env-file .compose.env --env-file runtime.env up -d --wait
-docker compose --env-file .compose.env --env-file runtime.env ps
+curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml -o config.yaml
+curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml -o compose.yaml
 ```
 
-访问配置的地址，默认 `http://localhost:8080`。使用 `administrator.username` 与生成的密码登录，首次登录必须改密码。管理员创建成功后，可以从配置中删除 `administrator.password`；已有管理员不会因重启或配置修改而被覆盖。
+也可以直接下载：[config.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml) · [compose.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml)。文件已提供中文注释，`compose.yaml` 默认不需要修改。
 
-停止服务时保留数据卷：
+编辑 `config.yaml`：
 
-```sh
-docker compose --env-file .compose.env --env-file runtime.env down
-```
-
-API 启动先通过 SQLx 的迁移记录判断数据库状态：空库执行全部内置 SQL，已有库只应用待执行迁移，再校验迁移版本和校验和。随后在事务锁下初始化首个管理员，防止并发重复创建。初始化失败时 API 不开放业务接口。
-
-## 配置说明
-
-| 配置项 | 作用 |
+| 配置 | 要修改的内容 |
 | --- | --- |
-| `database` | PostgreSQL URL、连接池上限；默认 Compose 内的 `postgres:5432`。 |
-| `server` | API 监听地址、浏览器访问来源、Cookie 安全属性。Docker 使用 `0.0.0.0:3000`，端口可调整。 |
-| `administrator` | 首次初始化的用户名与密码，仅在没有管理员时使用。 |
-| `security` | `encryption_key` 为 32 字节密钥的 Base64；升级时必须保留原值。 |
-| `auth` / `logging` | 会话时长、密码运算并发数、日志过滤级别。 |
-| `fetch` / `worker` | 订阅获取大小与超时、受限端点、任务处理开关与轮询间隔。 |
-| `deployment` | 部署目录、镜像仓库及摘要、HTTP 地址与端口、Compose 项目名、PostgreSQL 镜像。 |
-| `updater` | 开关、内部地址与端口、凭据、状态和备份目录、最小剩余空间。 |
+| `database.url` | 替换 `CHANGE_ME_DATABASE_PASSWORD`，建议密码只用字母、数字、下划线或连字符；下一步在 `.env` 填同一密码。 |
+| `administrator.username` / `password` | 设置首次管理员账号与密码。密码至少 8 位，包含大小写字母；账号默认 `admin`。 |
+| `security.encryption_key` | 填入 `openssl rand -base64 32` 的输出，升级时保留此值。 |
+| `updater.token` | 填入 `openssl rand -hex 32` 的输出，用于应用内部更新鉴权。 |
+| `server.allowed_origins` | 远程访问时填写实际地址，如 `http://192.168.1.10:8080`。HTTPS 填写域名地址并把 `cookie_secure` 改为 `true`。 |
 
-`compose.yaml` 是编排文件；`.compose.env` 是从配置生成的 Compose 参数，`runtime.env` 只记录在线更新选择的镜像覆盖值。它们不承载另一套人工维护的应用配置。`nginx.conf` 同样自动生成，跟随 API 端口。应用运行时只读取挂载的 `config.yaml`，`AIRMUX_CONFIG` 仅指定文件路径。
+其余保持默认。若更换部署目录，修改 `deployment.directory`，并与下一步 `.env` 的目录保持一致。
 
-配置修改后，用下面的 Compose 命令重建应用容器，使只读挂载和启动时读取的配置生效：
+## 2. 下载 .env，启动 Compose
 
 ```sh
-cd /srv/airmux
-docker compose --env-file .compose.env --env-file runtime.env up -d --force-recreate --wait
+curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env -o .env
 ```
 
-外网部署配置 HTTPS 来源并启用 `server.cookie_secure`，由反向代理提供 TLS。更改 HTTP 端口时同步修改 `server.allowed_origins`。可选 `security.encryption_key_file` 和 `updater.token_file` 必须位于部署目录内，权限 `0600`，且不能与对应的内联值同时配置。
+直接下载：[.env](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env)。**修改 `POSTGRES_PASSWORD`，与 `config.yaml` 中的数据库密码一致。** 以下参数仅在有需要时替换：
 
-已有 Docker PostgreSQL 使用 `database.url` 指向现有服务，并设置 `deployment.database_container` 和 `deployment.database_network`。渲染后不创建新的 PostgreSQL 服务；更新程序通过指定容器备份。远程数据库无法提供此容器时，关闭在线更新并自行管理备份与升级。
+| 参数 | 默认值 / 用途 |
+| --- | --- |
+| `AIRMUX_IMAGE_REPOSITORY` | 已填写公开镜像地址，通常无需修改，也无需 Docker 登录。 |
+| `AIRMUX_VERSION` | 已填写发行版本，可替换为其他兼容版本。 |
+| `AIRMUX_HTTP_PORT` / `AIRMUX_HTTP_BIND` | `8080` / `0.0.0.0`；更换端口时同步修改 `allowed_origins`。 |
+| `AIRMUX_DEPLOY_DIR` | `/srv/airmux`；必须是这三个文件所在的绝对路径，与 `deployment.directory` 一致。 |
 
-镜像仓库地址可配置，镜像固定为 `repository@sha256:digest`。需要登录时，先在主机执行 `docker login`；给更新程序的 `deployment.docker_config_file` 必须是含实际 `auths` 的私有凭据文件，不能仅依赖主机的 credential helper。无需 GitHub Token 或私有源码访问权限。
-
-## 备份、升级与恢复
-
-内置数据库的备份与备份有效性检查：
+保存后启动：
 
 ```sh
-cd /srv/airmux
-umask 077
-docker compose --env-file .compose.env --env-file runtime.env exec -T postgres pg_dump -U airmux -Fc airmux > backup.dump
-docker compose --env-file .compose.env --env-file runtime.env exec -T postgres pg_restore --list < backup.dump > /dev/null
+chmod 600 config.yaml .env
+docker compose up -d --wait
 ```
 
-同时保留原 `config.yaml` 和加密密钥。上述命令使用默认数据库与用户，修改过时按实际值调整。
+数据库、API、前端与更新程序由 Compose 启动。API 从只读挂载的 `config.yaml` 读取配置，通过 SQLx 自动建表、执行待完成迁移并创建首次管理员；已有管理员和数据不会被覆盖。
 
-日常在线更新在「系统设置 → 版本」中操作，顺序是准备镜像、停止 API、备份并校验、迁移、启动及健康检查。失败保留备份和恢复状态，不自动回滚已执行的数据库迁移。
+## 3. 检查启动结果
 
-手动升级先备份，修改配置中的 `deployment.app_image` 和 `deployment.updater_image`，运行 `render` 后使用 Compose 启动目标镜像。目标 API 自动应用待执行迁移。恢复时先停止 API，用旧版匹配的数据库备份恢复，再启动旧镜像；不要仅降级镜像而保留新版数据库。
+```sh
+docker compose ps
+docker compose logs --tail=50 api
+```
 
-v0.1.1 及更早部署先备份，再把旧环境变量中的数据库、来源、会话及密钥设置搬到 `config.yaml`，固定 v0.1.2 或更新镜像，并重新生成 Compose 参数。必须保留原数据库和原密钥，不要重新运行首次初始化来替换配置。
+`api`、`postgres` 应显示 `healthy`，`frontend`、`updater` 应显示 `Up`。打开 `http://服务器IP:8080`，使用配置的管理员账号登录，首次登录后修改密码。
+
+如启动失败，优先检查配置文件权限、密钥格式、两个文件的数据库密码，以及实际访问地址是否加入 `allowed_origins`。
+
+停止服务使用 `docker compose down`，保留数据时不要加 `-v`。日常更新点击侧栏版本号操作，更新程序会维护 `.env` 中的镜像覆盖值。修改配置后执行 `docker compose up -d --force-recreate --wait`；手动切换版本时先备份，并清空 `.env` 的 `AIRMUX_APP_IMAGE` 覆盖值。
+
+已有部署升级时保留原数据库、加密密钥与目录；不要覆盖已有配置。v0.1.2 的旧 `.compose.env` / `runtime.env` 编排仍受支持，无需为文档变化重新初始化数据库。

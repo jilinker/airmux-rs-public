@@ -1,0 +1,43 @@
+# 应用配置：下载后按下列中文注释修改，再执行 docker compose up -d --wait。
+# 此文件含密码与密钥，请执行 chmod 600 config.yaml .env，不要提交到 Git。
+database:
+  # 必改：替换数据库密码，并与 .env 的 POSTGRES_PASSWORD 保持一致。
+  # 密码建议只用字母、数字、下划线或连字符，避免 URL 转义。
+  url: "postgres://airmux:CHANGE_ME_DATABASE_PASSWORD@postgres:5432/airmux"
+  max_connections: 10
+
+server:
+  # 容器内部地址，无需修改。
+  listen: "0.0.0.0:3000"
+  # 远程访问必改：添加实际访问地址，如 http://192.168.1.10:8080 或 https://airmux.example.com。
+  allowed_origins: ["http://localhost:8080", "http://127.0.0.1:8080"]
+  # 使用 HTTPS 时改为 true；HTTP 保持 false。
+  cookie_secure: false
+
+administrator:
+  username: "admin"
+  # 必改：至少 8 位，包含大小写字母。仅首次创建管理员时使用，重启不会重置密码。
+  password: "CHANGE_ME_Admin123"
+
+security:
+  # 必改：填写 openssl rand -base64 32 的输出。升级时必须保留此密钥。
+  encryption_key: "REPLACE_WITH_BASE64_KEY"
+
+logging:
+  filter: "airmux=info,tower_http=info"
+
+deployment:
+  mode: docker
+  # 默认部署目录。改到其他目录时，也修改 .env 的 AIRMUX_DEPLOY_DIR。
+  directory: "/srv/airmux"
+  project_name: "airmux"
+  # 默认公开镜像仓库。如换镜像仓库，同时修改 .env 的 AIRMUX_IMAGE_REPOSITORY。
+  image_repository: "crpi-bqdmpalw8hu6it5q.cn-shenzhen.personal.cr.aliyuncs.com/jaelinker_public/airmux-rs"
+
+updater:
+  enabled: true
+  url: "http://updater:8081"
+  # 必改：填写 openssl rand -hex 32 的输出，作为 API 与更新程序之间的凭据。
+  token: "REPLACE_WITH_UPDATE_TOKEN"
+  state_directory: "/var/lib/airmux-updater"
+  minimum_free_bytes: 10737418240

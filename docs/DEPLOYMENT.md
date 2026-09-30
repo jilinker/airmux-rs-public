@@ -1,103 +1,69 @@
-# Docker Compose deployment
+# Docker Compose deployment in three steps
 
 [简体中文](DEPLOYMENT.zh-CN.md) · **English** · [Back to README](../README.en.md)
 
-For Linux `amd64` with Docker Engine and the Compose plugin. **Compose orchestrates services; runtime settings live in `config.yaml`, mounted read-only into the API and updater.** First installation needs no separate SQL, migration, or administrator command.
+Install Docker Engine and the Compose plugin first. The image supports `linux/amd64`. Deployment needs only **`config.yaml`, `compose.yaml`, and `.env`**; no repository clone, Python installation, or initialization script.
 
-## 1. Prepare the distribution directory
+## 1. Download and edit the configuration
 
-Install Docker Engine and the Compose plugin and verify `docker compose version`. On Debian / Ubuntu, install the remaining dependencies:
-
-```sh
-sudo apt-get update
-sudo apt-get install -y git python3 python3-yaml
-sudo mkdir -p /srv/airmux
-sudo chown "$USER":"$USER" /srv/airmux
-git clone https://github.com/jilinker/airmux-rs-public.git airmux-distribution
-cd airmux-distribution
-```
-
-On other systems, install PyYAML with `python3 -m pip install -r deploy/requirements.txt`.
-
-## 2. Generate the initial configuration
+Create the deployment directory and download the two YAML files from the public repository:
 
 ```sh
-python3 deploy/manage.py init --config /srv/airmux/config.yaml
-```
-
-This resolves the image digest from the fixed public Release and generates a database password, initial administrator password, 32-byte encryption key, and updater token. Existing configuration is never overwritten. For an offline installation, specify an available image:
-
-```sh
-python3 deploy/manage.py init --config /srv/airmux/config.yaml --image registry.example.com/team/airmux@sha256:REPLACE_WITH_DIGEST
-```
-
-Open `/srv/airmux/config.yaml` in an editor, save the administrator password, and set your browser origin and port. Keep the file mode `0600` and out of Git. After editing configuration, regenerate orchestration parameters from the distribution directory:
-
-```sh
-python3 deploy/manage.py render --config /srv/airmux/config.yaml
-```
-
-## 3. Start with Compose
-
-```sh
+mkdir -p /srv/airmux
 cd /srv/airmux
-docker compose --env-file .compose.env --env-file runtime.env up -d --wait
-docker compose --env-file .compose.env --env-file runtime.env ps
+curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml -o config.yaml
+curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml -o compose.yaml
 ```
 
-Open the configured address, normally `http://localhost:8080`. Log in with `administrator.username` and the generated password; the first login requires a password change. After initialization, `administrator.password` can be removed from the configuration. Restarting or editing configuration never overwrites an existing administrator.
+Direct downloads: [config.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml) · [compose.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml). Both files include Chinese comments. Keep the default Compose file.
 
-Stop services while retaining data volumes:
+Edit `config.yaml`:
 
-```sh
-docker compose --env-file .compose.env --env-file runtime.env down
-```
-
-At startup SQLx checks migration history: empty databases receive every embedded SQL migration, existing databases receive only pending migrations, and versions and checksums are verified. A transaction lock protects first-administrator initialization from concurrent startup. Initialization errors prevent the API from serving business endpoints.
-
-## Configuration
-
-| Section | Purpose |
+| Setting | Required change |
 | --- | --- |
-| `database` | PostgreSQL URL and pool limit; the default Compose service is `postgres:5432`. |
-| `server` | API listen address, allowed browser origins, and secure cookies. Docker defaults to `0.0.0.0:3000`; its port can change. |
-| `administrator` | Initial username and password, used only when no administrator exists. |
-| `security` | `encryption_key` is a Base64-encoded 32-byte key; preserve its original value during upgrades. |
-| `auth` / `logging` | Session duration, password concurrency, and log filtering. |
-| `fetch` / `worker` | Subscription size and timeout limits, restricted endpoints, worker enablement and polling. |
-| `deployment` | Directory, image repository and digests, HTTP bind address and port, Compose project, PostgreSQL image. |
-| `updater` | Enablement, internal address and port, token, state/backup directory, and free-space threshold. |
+| `database.url` | Replace `CHANGE_ME_DATABASE_PASSWORD`. Use letters, digits, underscores, or hyphens to avoid URL escaping; enter the same password in `.env` in step 2. |
+| `administrator.username` / `password` | Choose the initial administrator credentials. The password needs at least 8 characters, including upper and lower case letters; the default username is `admin`. |
+| `security.encryption_key` | Paste the output of `openssl rand -base64 32`. Preserve this key during upgrades. |
+| `updater.token` | Paste the output of `openssl rand -hex 32` for internal update authentication. |
+| `server.allowed_origins` | For remote access, add the actual origin, such as `http://192.168.1.10:8080`. For HTTPS, use your domain origin and set `cookie_secure` to `true`. |
 
-`compose.yaml` is orchestration. `.compose.env` contains generated Compose parameters; `runtime.env` only records image overrides selected by online updates. Neither is a separate application configuration to maintain. Generated `nginx.conf` follows the API port. Runtime application settings come only from the mounted `config.yaml`; `AIRMUX_CONFIG` merely selects its path.
+Keep other defaults. If using another directory, set `deployment.directory` and use the same path in `.env` in the next step.
 
-After editing configuration, recreate application containers with Compose so their read-only mounts and startup settings take effect:
+## 2. Download .env and start Compose
 
 ```sh
-cd /srv/airmux
-docker compose --env-file .compose.env --env-file runtime.env up -d --force-recreate --wait
+curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env -o .env
 ```
 
-For external access, configure an HTTPS origin and `server.cookie_secure`, with TLS provided by a reverse proxy. Update `server.allowed_origins` when changing the HTTP port. Optional `security.encryption_key_file` and `updater.token_file` must be inside the deployment directory, mode `0600`, and cannot coexist with their corresponding inline values.
+Direct download: [.env](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env). **Set `POSTGRES_PASSWORD` to the database password in `config.yaml`.** Change the remaining parameters only if needed:
 
-To reuse Docker PostgreSQL, point `database.url` at the existing service and configure `deployment.database_container` and `deployment.database_network`. Rendering removes the new PostgreSQL service, while the updater backs up through the specified container. For a remote database without such a container, disable online updates and manage backups and upgrades separately.
+| Parameter | Default / purpose |
+| --- | --- |
+| `AIRMUX_IMAGE_REPOSITORY` | The public image repository is already filled in; no Docker login is needed. |
+| `AIRMUX_VERSION` | A released version is already filled in; another compatible version may be selected. |
+| `AIRMUX_HTTP_PORT` / `AIRMUX_HTTP_BIND` | `8080` / `0.0.0.0`; update `allowed_origins` when changing the port. |
+| `AIRMUX_DEPLOY_DIR` | `/srv/airmux`; the absolute directory containing all three files, matching `deployment.directory`. |
 
-The image repository is configurable; images are pinned as `repository@sha256:digest`. If authentication is needed, run `docker login` on the host. The updater's `deployment.docker_config_file` must contain actual `auths` in a private credential file, rather than relying solely on the host's credential helper. No GitHub token or private source access is needed.
-
-## Backups, upgrades, and recovery
-
-Back up the built-in database and verify the dump:
+Save and start:
 
 ```sh
-cd /srv/airmux
-umask 077
-docker compose --env-file .compose.env --env-file runtime.env exec -T postgres pg_dump -U airmux -Fc airmux > backup.dump
-docker compose --env-file .compose.env --env-file runtime.env exec -T postgres pg_restore --list < backup.dump > /dev/null
+chmod 600 config.yaml .env
+docker compose up -d --wait
 ```
 
-Also preserve the original `config.yaml` and encryption key. These commands use default database/user names; adjust them if changed.
+Compose starts PostgreSQL, the API, frontend, and updater. The API reads the mounted `config.yaml` in read-only mode, applies pending SQLx migrations, and creates the first administrator automatically. Existing accounts and data are preserved.
 
-For online updates, use System settings → Version. The updater prepares the image, stops the API, backs up and verifies the database, applies migrations, starts the API, and checks health. A failure retains the backup and recovery state; already-applied database migrations are not automatically rolled back.
+## 3. Check startup
 
-For manual upgrades, back up first, change `deployment.app_image` and `deployment.updater_image`, run `render`, then start the target image with Compose. The target API applies pending migrations. To recover, stop the API, restore the database backup matching the old release, then start the old image. Do not downgrade only the image while keeping a newer database.
+```sh
+docker compose ps
+docker compose logs --tail=50 api
+```
 
-For v0.1.1 or earlier, back up first, move database, origin, session, and key settings from the old environment into `config.yaml`, pin v0.1.2 or newer images, and regenerate Compose parameters. Preserve the original database and key; do not replace existing configuration with first-installation initialization.
+`api` and `postgres` should be `healthy`; `frontend` and `updater` should be `Up`. Open `http://SERVER_IP:8080` and sign in with the configured administrator credentials. Change the password after the first login.
+
+For startup failures, check file permissions, encryption key format, matching database passwords, and the actual origin in `allowed_origins`.
+
+Stop with `docker compose down`; omit `-v` to retain data. Click the sidebar version to update; the updater maintains the image override in `.env`. After editing configuration, run `docker compose up -d --force-recreate --wait`. Before switching versions manually, back up and clear the `AIRMUX_APP_IMAGE` override in `.env`.
+
+Preserve the database, encryption key, and deployment directory when upgrading an existing installation. The v0.1.2 `.compose.env` / `runtime.env` layout remains supported; documentation changes do not require database reinitialization.
