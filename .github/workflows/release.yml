@@ -1,0 +1,65 @@
+name: Public release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published distribution tag
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+
+      - name: Validate public release manifest
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, shutil
+          from pathlib import Path
+          tag = os.environ['TAG']
+          if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?', tag):
+              raise SystemExit('Invalid release tag')
+          path = Path('release-manifests') / (tag + '.json')
+          m = json.loads(path.read_text())
+          if m.get('version') != tag[1:] or m.get('architecture') != 'linux/amd64':
+              raise SystemExit('Release version or architecture mismatch')
+          if not re.fullmatch(r'[a-z0-9][a-z0-9.:-]*(?:/[a-z0-9._-]+)+@sha256:[0-9a-f]{64}', m.get('image', '')):
+              raise SystemExit('Release image must be pinned by digest')
+          if m.get('prerelease') is not ('-' in tag):
+              raise SystemExit('Prerelease flag mismatch')
+          if not (Path('release-notes') / (tag + '.md')).is_file():
+              raise SystemExit('Release notes are missing')
+          shutil.copyfile(path, 'release-manifest.json')
+          PY
+
+      - name: Publish release and manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          GH_REPO: jilinker/airmux-rs-public
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release download "$TAG" --pattern release-manifest.json --dir existing
+            cmp release-manifest.json existing/release-manifest.json
+            exit 0
+          fi
+          flags=()
+          if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$TAG" release-manifest.json --verify-tag \
+            --title "Airmux RS $TAG" --notes-file "release-notes/$TAG.md" "${flags[@]}"

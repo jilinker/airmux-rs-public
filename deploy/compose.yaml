@@ -1,0 +1,96 @@
+name: airmux
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-airmux}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-airmux}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    image: ${AIRMUX_APP_IMAGE:?set AIRMUX_APP_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/usr/local/bin/airmux-api"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      API_ADDR: 0.0.0.0:3000
+      AIRMUX_DEPLOYMENT: docker
+      AIRMUX_ENCRYPTION_KEY_FILE: /run/secrets/airmux_encryption_key
+      AIRMUX_UPDATER_URL: http://updater:8081
+      AIRMUX_UPDATER_TOKEN_FILE: /run/secrets/airmux_updater_token
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      ALLOWED_ORIGINS: ${AIRMUX_ORIGIN:?set AIRMUX_ORIGIN}
+      RUST_LOG: ${RUST_LOG:-airmux=info,tower_http=info}
+    secrets:
+      - airmux_encryption_key
+      - airmux_updater_token
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/health/ready', timeout=2)"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+
+  frontend:
+    image: ${AIRMUX_APP_IMAGE:?set AIRMUX_APP_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    entrypoint: ["/usr/sbin/nginx"]
+    command: ["-g", "daemon off;"]
+    ports:
+      - "${AIRMUX_HTTP_PORT:-8080}:80"
+
+  updater:
+    # Keep this image pinned independently; app releases never restart it.
+    image: ${AIRMUX_UPDATER_IMAGE:?set AIRMUX_UPDATER_IMAGE}
+    restart: unless-stopped
+    entrypoint: ["python3", "/opt/airmux/deploy/updater.py"]
+    environment:
+      AIRMUX_DEPLOY_DIR: ${AIRMUX_DEPLOY_DIR:?set AIRMUX_DEPLOY_DIR}
+      AIRMUX_COMPOSE_FILE: ${AIRMUX_DEPLOY_DIR:?set AIRMUX_DEPLOY_DIR}/compose.yaml
+      AIRMUX_CONFIG: /etc/airmux/config.yaml
+      AIRMUX_IMAGE: ${AIRMUX_IMAGE:?set AIRMUX_IMAGE without tag or digest}
+      AIRMUX_UPDATER_TOKEN_FILE: /run/secrets/airmux_updater_token
+      AIRMUX_UPDATE_HOST: 0.0.0.0
+      AIRMUX_UPDATE_PORT: 8081
+      POSTGRES_USER: ${POSTGRES_USER:-airmux}
+      POSTGRES_DB: ${POSTGRES_DB:-airmux}
+    expose:
+      - "8081"
+    secrets:
+      - source: airmux_updater_token
+        target: airmux_updater_token
+      - source: docker_config
+        target: /root/.docker/config.json
+    volumes:
+      - updater-data:/var/lib/airmux-updater
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${AIRMUX_DEPLOY_DIR:?set AIRMUX_DEPLOY_DIR}/config.yaml:/etc/airmux/config.yaml:ro
+      # Resolve the directory to the same absolute path inside and outside the
+      # container so updater-generated runtime.env is usable by Compose.
+      - ${AIRMUX_DEPLOY_DIR:?set AIRMUX_DEPLOY_DIR}:${AIRMUX_DEPLOY_DIR:?set AIRMUX_DEPLOY_DIR}
+
+volumes:
+  postgres-data:
+  updater-data:
+
+secrets:
+  airmux_encryption_key:
+    file: ${AIRMUX_DEPLOY_DIR:?set AIRMUX_DEPLOY_DIR}/secrets/airmux_encryption_key
+  airmux_updater_token:
+    file: ${AIRMUX_DEPLOY_DIR:?set AIRMUX_DEPLOY_DIR}/secrets/airmux_updater_token
+  docker_config:
+    file: ${AIRMUX_DEPLOY_DIR:?set AIRMUX_DEPLOY_DIR}/secrets/docker_config.json

@@ -1,0 +1,12 @@
+{
+  "minimum_free_bytes": 10737418240,
+  "deployment_dir": "/srv/airmux",
+  "compose_file": "/srv/airmux/compose.yaml",
+  "env_file": "/srv/airmux/.env",
+  "runtime_env_file": "/srv/airmux/runtime.env",
+  "updater": {
+    "host": "0.0.0.0",
+    "port": 8081,
+    "shared_secret_file": "/run/secrets/airmux_updater_token"
+  }
+}
