@@ -12,18 +12,9 @@ Source code is maintained privately. This public repository distributes deployme
 
 ## Features
 
-| Module | Capabilities |
-| --- | --- |
-| Sources and nodes | Import files, fetch URL subscriptions, refresh on a schedule, and manage custom nodes. |
-| Plans and templates | Create plans with custom groups, region matching, residential groups, and group references. |
-| Routing and DNS | Manage rule sets, routing rules, DNS policies, resolvers, and runtime settings. |
-| Preview and publication | Review redacted previews and validation results, publish immutable versions, and download configurations. |
-| Access links | Follow the latest version or pin one; copy, enable, pause, rotate, or delete links. |
-| System updates | Validate public release manifests, separate preparation and restart, and back up the database; the image repository remains configurable. |
+Manage subscription sources and nodes, configuration plans and templates, routing and DNS, redacted previews and publications, client access links, and system updates.
 
 ## Screenshots
-
-Source, plan, link, and activity names in these screenshots were masked before capture.
 
 ![Overview: personal resource statistics and recent activity, with sensitive fields masked](docs/images/overview.jpg)
 
@@ -33,9 +24,12 @@ Source, plan, link, and activity names in these screenshots were masked before c
 
 ## Installation and updates
 
-Releases are published in the public [jilinker/airmux-rs-public](https://github.com/jilinker/airmux-rs-public) repository. Deployment does not require a GitHub repository setting or GitHub token; the image repository remains configurable in deployment settings.
+Releases are published in the public [jilinker/airmux-rs-public](https://github.com/jilinker/airmux-rs-public) repository. Deployment needs no GitHub repository setting or token. Follow the [English deployment guide](docs/DEPLOYMENT.md) or [中文部署指南](docs/DEPLOYMENT.zh-CN.md) to install Python 3 and PyYAML, then run:
 
-- [English deployment guide](docs/DEPLOYMENT.md)
-- [中文部署指南](docs/DEPLOYMENT.zh-CN.md)
+```sh
+python3 deploy/manage.py init --config /srv/airmux/config.yaml
+cd /srv/airmux
+docker compose --env-file .compose.env --env-file runtime.env up -d --wait
+```
 
-The release image targets Linux `amd64` and runs with Docker Engine and the Compose plugin. Follow the deployment guide to configure the independent encryption key, updater token, and registry credentials.
+Edit only the standard YAML `config.yaml`. API startup automatically applies pending SQLx migrations and initializes the first admin under a transaction lock, so no manual migrate/bootstrap commands or editable `.env` are needed. Change the generated admin password on first login and preserve the original encryption key. For offline installation, pass an image digest to init with `--image`.

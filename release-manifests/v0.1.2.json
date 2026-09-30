@@ -1,0 +1,118 @@
+{
+  "version": "0.1.2",
+  "minimumVersion": "0.1.2",
+  "image": "crpi-bqdmpalw8hu6it5q.cn-shenzhen.personal.cr.aliyuncs.com/jaelinker_public/airmux-rs@sha256:c9bc94d6762f6c17b395a4810414cd186d9e1e8509c9a65a100454a2c35c7caf",
+  "architecture": "linux/amd64",
+  "commit": "7e2d042a03f43cdf54d65a2be35c8663b16f35ae",
+  "prerelease": false,
+  "migrations": [
+    {
+      "name": "0001_identity.sql",
+      "sha256": "8ed837c451e43a788b6123d4d0743658da6fa4a4e68e46198a26bd96b8327ded"
+    },
+    {
+      "name": "0002_sources.sql",
+      "sha256": "ed968f6c42234cfae36279204fdfc59d7e9778f5d9c7ed304b2a0991d27c8b22"
+    },
+    {
+      "name": "0003_sources_comments.sql",
+      "sha256": "bd98cac596871d4747a15c5526502a0f4b753777e427b655466a5980766f3444"
+    },
+    {
+      "name": "0004_sources_comments.sql",
+      "sha256": "864a9ca0a18e5da89f5efcd3ecc24dc99ef8f981a2e5137de16cae28ac81a237"
+    },
+    {
+      "name": "0005_url_refresh_jobs.sql",
+      "sha256": "29195758b33571f73f29cfaacec0253e9f74c84cbd42ec1f701e26dbccdd8170"
+    },
+    {
+      "name": "0006_snapshot_digest.sql",
+      "sha256": "a54c79c86d90faf46aeeb8880401cda230e198e5cb5711ea472e2c91e9a2285f"
+    },
+    {
+      "name": "0007_url_refresh_hardening.sql",
+      "sha256": "53661048105138ebe3dcde05a1995e62cd3980c1fff76afe258f5fd51e6283bc"
+    },
+    {
+      "name": "0008_custom_nodes.sql",
+      "sha256": "c798a66af91645c955c09c50c272766e3769a4762f353bbe67d532512b575872"
+    },
+    {
+      "name": "0009_custom_nodes_comments.sql",
+      "sha256": "557a1eaf741d81f79d5bbd13d5fa7921cd1bd0b6cec4ac4a802c68151e130d05"
+    },
+    {
+      "name": "0010_custom_nodes_socks5.sql",
+      "sha256": "c88d0bd7156a81420d6985190b696280b20a276b402a742d2bf6860733db29bf"
+    },
+    {
+      "name": "0011_custom_nodes_mode.sql",
+      "sha256": "674f187daae7cabcc1a5d5402fb9934621bc5f8cae6e014f179c30aea9392781"
+    },
+    {
+      "name": "0012_source_events.sql",
+      "sha256": "311c1f4bae6935535d3903ec543ee646d2a8ca8ee4a6a51a007158959ec6ca82"
+    },
+    {
+      "name": "0013_plans.sql",
+      "sha256": "fd9a36a2661624d2efa35a263a867c9c7e95595e85a7443e7e551579026ba9c3"
+    },
+    {
+      "name": "0014_regions.sql",
+      "sha256": "166df9a700be49a6723937e2a58588be37d3309e6bdfcc0b155e03f906d8b9cb"
+    },
+    {
+      "name": "0015_plan_versions.sql",
+      "sha256": "0cfaea1bbb67da454e25013f7da1ec3600d8837605f909419ee81f1dd25d90fb"
+    },
+    {
+      "name": "0016_plan_publish_idempotency.sql",
+      "sha256": "913f8f079a9156bb2284ce0375e6817a780d86f9314127d9ab839e11e9174bae"
+    },
+    {
+      "name": "0017_plan_artifact_encryption.sql",
+      "sha256": "87295ea41c723dd1240bb9e6ebb003c5dcfac0f08aef964ef5e8f3f01218b4df"
+    },
+    {
+      "name": "0018_plan_targets_templates.sql",
+      "sha256": "757a054eea4d0e0b5eed6f2c52409720893ada778811fb3b3679142e76687d11"
+    },
+    {
+      "name": "0019_mihomo_template.sql",
+      "sha256": "d948851b2ad0d9da265bf97140f6c975b1272eca7891def558474bbb50ab2b1a"
+    },
+    {
+      "name": "0020_plan_copy_requests.sql",
+      "sha256": "52cdf45ffa4c066b19c3fa17529bfb09072a224497cfe53d0c00d949ffa53edf"
+    },
+    {
+      "name": "0021_template_sniff_protocols.sql",
+      "sha256": "186fbf4cdd00057745ab63d06608cc6560ba428dd4d73890173b283cedaf3278"
+    },
+    {
+      "name": "0022_template_catalog_extensions.sql",
+      "sha256": "9f897629246ac38934c6554557585f3b6f1d795ecd1259d9462a27f9fd9a1e70"
+    },
+    {
+      "name": "0023_access_links.sql",
+      "sha256": "889d774956cfc498bb06ee59d64b2fe131db8f4349cf3121163e97bfa08e1cc1"
+    },
+    {
+      "name": "0024_user_management.sql",
+      "sha256": "629ce5be5b9732e15524ed86314310eca4c807c4959fd259ab57c6787364e994"
+    },
+    {
+      "name": "0025_system_logs_branding.sql",
+      "sha256": "616e0f9157e7fc65f84190b5ac4ab9ce156f5ee57b39cd0e05386c3af0221053"
+    },
+    {
+      "name": "0026_backfill_execution_logs.sql",
+      "sha256": "0073645410d1fa1df1ca6be023a58480ff50290d26d6d83b6001fd2bdfba9e51"
+    },
+    {
+      "name": "0027_access_link_token_encryption.sql",
+      "sha256": "1ced8ed6a4493f01f43df9a606596d49c7fdcb5fecc142c7a092c3c67abe9357"
+    }
+  ]
+}
