@@ -12,7 +12,7 @@ Airmux RS 是一个用于管理订阅源、配置方案、发布版本和客户�
 
 ## 安装与更新
 
-部署只需 **三个文件、三步操作**，前提是已经安装 Docker 与 Compose 插件。
+部署只需 **三个文件、三步操作**，前提是已经安装 Docker 与 Compose 插件。默认 Compose 自带 PostgreSQL，使用已有数据库可选择[外置 PG 方案](docs/DEPLOYMENT.zh-CN.md#外置-postgresql)。
 
 1. 下载 [config.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml) 和 [compose.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml)，放在 `/srv/airmux`；按文件内中文注释修改管理员、数据库密码、密钥、更新凭据与访问地址。
 2. 下载 [.env](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env)，填入相同数据库密码；镜像、端口与目录按需替换。执行：

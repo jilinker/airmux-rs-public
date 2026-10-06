@@ -1,6 +1,9 @@
 # 应用配置：下载后按下列中文注释修改，再执行 docker compose up -d --wait。
 # 此文件含密码与密钥，请执行 chmod 600 config.yaml .env，不要提交到 Git。
 database:
+  # 默认 Compose 自带 PostgreSQL，用户 / 库名为 airmux，内部地址为 postgres:5432。
+  # 外置 PG：使用 compose.external.yaml，填写已有数据库地址、账号和库名。
+  # 应用自动建表 / 迁移，但不会创建外置数据库；账号需有建表和迁移权限。
   # 必改：替换数据库密码，并与 .env 的 POSTGRES_PASSWORD 保持一致。
   # 密码建议只用字母、数字、下划线或连字符，避免 URL 转义。
   url: "postgres://airmux:CHANGE_ME_DATABASE_PASSWORD@postgres:5432/airmux"

@@ -12,7 +12,7 @@ Source code is maintained privately. This public repository distributes deployme
 
 ## Installation and updates
 
-Deployment needs **three files and three steps**, with Docker and the Compose plugin installed.
+Deployment needs **three files and three steps**, with Docker and the Compose plugin installed. Compose includes PostgreSQL by default; an [external PG option](docs/DEPLOYMENT.md#external-postgresql) is available for an existing database.
 
 1. Download [config.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml) and [compose.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml) into `/srv/airmux`. Edit the administrator credentials, database password, encryption key, update token, and access origins.
 2. Download [.env](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env), set the same database password, and change the image, port, or directory only if needed. Run:
@@ -25,7 +25,7 @@ Deployment needs **three files and three steps**, with Docker and the Compose pl
 
 3. Run `docker compose ps` and `docker compose logs --tail=50 api`, then verify login at `http://SERVER_IP:8080`.
 
-Rust startup handles database creation, migrations, and the first administrator automatically. No repository clone, Python installation, or management script is needed. See the [English deployment guide](docs/DEPLOYMENT.md) · [中文部署指南](docs/DEPLOYMENT.zh-CN.md) for the settings to edit.
+Rust startup handles table creation, migrations, and the first administrator automatically. No repository clone, Python installation, or management script is needed. See the [English deployment guide](docs/DEPLOYMENT.md) · [中文部署指南](docs/DEPLOYMENT.zh-CN.md) for the settings to edit.
 
 ## Features
 

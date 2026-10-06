@@ -1,30 +1,13 @@
-# 默认自带 PostgreSQL；仅需此文件、config.yaml 和 .env：docker compose up -d --wait
-# 使用已有 PostgreSQL 时，下载 compose.external.yaml 并保存为 compose.yaml。
+# 外置 PostgreSQL：下载后保存为 compose.yaml，仍只需 config.yaml、compose.yaml、.env。
+# 连接信息填入 config.yaml；远程 PG 设置 updater.enabled: false。
 name: airmux
 services:
-  postgres:
-    # 数据库用户 / 库名固定为 airmux，与 config.yaml 的 database.url 对应。
-    image: postgres:17-bookworm
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: airmux
-      POSTGRES_DB: airmux
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 填写数据库密码}
-    volumes:
-      # 持久化数据；重启或 docker compose down 不会删除，勿执行 down -v。
-      - postgres-data:/var/lib/postgresql/data
-    # 不向宿主机暴露 5432；API 使用内部地址 postgres:5432。
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U airmux -d airmux"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
   api:
     platform: linux/amd64
     image: ${AIRMUX_APP_IMAGE:-${AIRMUX_IMAGE_REPOSITORY}:${AIRMUX_VERSION}}
     restart: unless-stopped
-    depends_on:
-      postgres: {condition: service_healthy}
+    # 用 host.docker.internal 连接宿主机 PG；远程 PG 直接使用其可达地址。
+    extra_hosts: ["host.docker.internal:host-gateway"]
     entrypoint: ["/usr/local/bin/airmux-api"]
     environment:
       AIRMUX_CONFIG: /etc/airmux/config.yaml
@@ -50,6 +33,8 @@ services:
     ports:
       - "${AIRMUX_HTTP_BIND:-0.0.0.0}:${AIRMUX_HTTP_PORT:-8080}:80"
   updater:
+    # 仅同一 Docker 的已有 PG 容器可备份更新；.env 设置 COMPOSE_PROFILES=updates。
+    profiles: [updates]
     platform: linux/amd64
     image: ${AIRMUX_IMAGE_REPOSITORY}:${AIRMUX_VERSION}
     restart: unless-stopped
@@ -69,5 +54,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - updater-data:/var/lib/airmux-updater
 volumes:
-  postgres-data:
   updater-data:
+networks:
+  default:
+    # 已有 PG 容器：填写它所在的网络，EXTERNAL=true；远程 PG 保持默认。
+    name: ${AIRMUX_NETWORK_NAME:-airmux_default}
+    external: ${AIRMUX_NETWORK_EXTERNAL:-false}
