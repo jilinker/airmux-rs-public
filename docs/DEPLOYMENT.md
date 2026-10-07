@@ -72,6 +72,18 @@ Stop with `docker compose down`; omit `-v` to retain data. Click the sidebar ver
 
 Preserve the database, encryption key, and deployment directory when upgrading an existing installation. The v0.1.2 `.compose.env` / `runtime.env` layout remains supported; documentation changes do not require database reinitialization.
 
+### Current version cannot be confirmed during preparation
+
+The current version comes from the running API container's image label. `AIRMUX_VERSION` in `.env` selects an image; changing it does not fix version detection.
+
+Check that `deployment.directory` in `config.yaml` and `AIRMUX_DEPLOY_DIR` in `.env` both equal the actual absolute directory containing the three deployment files. For an installation in `/opt/airmux-rs`, set both to `/opt/airmux-rs`. Also ensure `deployment.project_name` matches the actual Compose project. Inspect the project and version labels with:
+
+```sh
+docker inspect "$(docker compose ps -q api)" --format '{{index .Config.Labels "com.docker.compose.project"}} {{index .Config.Labels "org.opencontainers.image.version"}}'
+```
+
+After correcting paths, project names, or mounts, run `docker compose up -d --force-recreate --no-deps --wait api updater` from the original deployment directory, then retry preparation. This briefly restarts the API while retaining the database and volumes. If detection still fails, check the updater's `/var/run/docker.sock` mount and Docker/Compose access inside the container.
+
 ## External PostgreSQL
 
 Follow the same three steps, but download the external variant as **`compose.yaml`** in step 1. No additional Compose override is needed:

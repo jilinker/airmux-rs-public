@@ -72,6 +72,18 @@ docker compose logs --tail=50 api
 
 已有部署升级时保留原数据库、加密密钥与目录；不要覆盖已有配置。v0.1.2 的旧 `.compose.env` / `runtime.env` 编排仍受支持，无需为文档变化重新初始化数据库。
 
+### 准备升级时无法确认当前版本
+
+当前版本来自运行中 API 容器的镜像标签。`.env` 的 `AIRMUX_VERSION` 仅用于选择镜像，修改它不能修复版本识别。
+
+先核对 `config.yaml` 的 `deployment.directory` 和 `.env` 的 `AIRMUX_DEPLOY_DIR`：二者必须等于三个部署文件所在的实际绝对路径。例如部署在 `/opt/airmux-rs`，两个值都应填写 `/opt/airmux-rs`。同时，`deployment.project_name` 必须与实际 Compose 项目名一致，可通过以下命令查看：
+
+```sh
+docker inspect "$(docker compose ps -q api)" --format '{{index .Config.Labels "com.docker.compose.project"}} {{index .Config.Labels "org.opencontainers.image.version"}}'
+```
+
+修改目录、项目名或挂载后，在原部署目录执行 `docker compose up -d --force-recreate --no-deps --wait api updater`，让 API 与更新器重新读取配置。API 会短暂重启，数据库和数据卷保持原样。然后重试准备升级。若仍失败，检查更新器是否挂载 `/var/run/docker.sock`，以及容器内 Docker/Compose 能否正常执行。
+
 ## 外置 PostgreSQL
 
 仍按上面三步部署，仅在第 1 步将外置版本下载为 **`compose.yaml`**，不需要叠加其他 Compose 文件：
