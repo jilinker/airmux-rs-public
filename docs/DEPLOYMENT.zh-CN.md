@@ -28,6 +28,7 @@ curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compos
 | `security.encryption_key` | 填入 `openssl rand -base64 32` 的输出，升级时保留此值。 |
 | `updater.token` | 填入 `openssl rand -hex 32` 的输出，用于应用内部更新鉴权。 |
 | `server.allowed_origins` | 远程访问时填写实际地址，如 `http://192.168.1.10:8080`。HTTPS 填写域名地址并把 `cookie_secure` 改为 `true`。 |
+| `server.public_base_url` | 使用规则集库时必填：设置客户端可访问的 HTTP(S) origin，如 `https://airmux.example.com`，不带路径或查询参数；反向代理需转发 `/sub/`。既有直接 URL 模式无需填写。 |
 
 其余保持默认。若更换部署目录，修改 `deployment.directory`，并与下一步 `.env` 的目录保持一致。
 

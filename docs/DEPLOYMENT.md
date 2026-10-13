@@ -28,6 +28,7 @@ Edit `config.yaml`:
 | `security.encryption_key` | Paste the output of `openssl rand -base64 32`. Preserve this key during upgrades. |
 | `updater.token` | Paste the output of `openssl rand -hex 32` for internal update authentication. |
 | `server.allowed_origins` | For remote access, add the actual origin, such as `http://192.168.1.10:8080`. For HTTPS, use your domain origin and set `cookie_secure` to `true`. |
+| `server.public_base_url` | Required when using the rule-set library: set a client-reachable HTTP(S) origin, such as `https://airmux.example.com`, without a path or query. Forward `/sub/` through the reverse proxy. Existing direct URL mode does not require this setting. |
 
 Keep other defaults. If using another directory, set `deployment.directory` and use the same path in `.env` in the next step.
 

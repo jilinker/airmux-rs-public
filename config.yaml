@@ -10,6 +10,8 @@ database:
   max_connections: 10
 
 server:
+  # 使用规则集库时填写客户端能访问的地址，如 https://airmux.example.com。
+  public_base_url: null
   # 容器内部地址，无需修改。
   listen: "0.0.0.0:3000"
   # 远程访问必改：添加实际访问地址，如 http://192.168.1.10:8080 或 https://airmux.example.com。
