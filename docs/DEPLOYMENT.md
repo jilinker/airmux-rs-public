@@ -73,6 +73,8 @@ Stop with `docker compose down`; omit `-v` to retain data. Click the sidebar ver
 
 Preserve the database, encryption key, and deployment directory when upgrading an existing installation. The v0.1.2 `.compose.env` / `runtime.env` layout remains supported; documentation changes do not require database reinitialization.
 
+SSH download profiles are available from 0.4.2. Before enabling password authentication on an existing deployment, add `ssh-host-keys:/var/lib/airmux-ssh` to the API volumes and declare `ssh-host-keys` in the top-level volumes, following the new Compose file, then recreate the API. Preserve your other mounts and deployment settings. The updater keeps the existing Compose file; this volume retains automatically recorded host keys across container recreation. New installations already include it.
+
 ### Current version cannot be confirmed during preparation
 
 The current version comes from the running API container's image label. `AIRMUX_VERSION` in `.env` selects an image; changing it does not fix version detection.

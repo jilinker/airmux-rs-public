@@ -73,6 +73,8 @@ docker compose logs --tail=50 api
 
 已有部署升级时保留原数据库、加密密钥与目录；不要覆盖已有配置。v0.1.2 的旧 `.compose.env` / `runtime.env` 编排仍受支持，无需为文档变化重新初始化数据库。
 
+0.4.2 起支持 SSH 下载代理。现有部署启用密码认证前，对照新版 Compose，在 API 的 `volumes` 添加 `ssh-host-keys:/var/lib/airmux-ssh`，并在顶层 `volumes` 声明 `ssh-host-keys`，然后重新创建 API；保留自己的其他挂载和部署设置。升级器保留原 Compose 文件，此卷让首次自动记录的主机公钥在容器重建后继续保留。新安装已包含该卷。
+
 ### 准备升级时无法确认当前版本
 
 当前版本来自运行中 API 容器的镜像标签。`.env` 的 `AIRMUX_VERSION` 仅用于选择镜像，修改它不能修复版本识别。

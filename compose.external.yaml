@@ -12,6 +12,7 @@ services:
     environment:
       AIRMUX_CONFIG: /etc/airmux/config.yaml
     volumes:
+      - ssh-host-keys:/var/lib/airmux-ssh
       - type: bind
         source: ./config.yaml
         target: /etc/airmux/config.yaml
@@ -54,6 +55,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - updater-data:/var/lib/airmux-updater
 volumes:
+  ssh-host-keys:
   updater-data:
 networks:
   default:
