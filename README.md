@@ -2,39 +2,30 @@
 
 **简体中文** · [English](README.en.md)
 
-Airmux RS 是一个用于管理订阅源、配置方案、发布版本和客户端访问链接的配置工作空间。
+管理多订阅源与手动节点，通过公共方案和客户端方案生成 Mihomo YAML 或 Loon 原生配置。个人资源按用户隔离，支持邀请登录、远程规则、访问链接缓存和 Docker Compose 系统更新。
 
-**Rust API · Vue 3 · PostgreSQL · Docker / linux/amd64**
+**Rust API · Vue 3 · PostgreSQL 17 · Docker / linux/amd64**
 
-[下载版本](https://github.com/jilinker/airmux-rs-public/releases/latest) · [部署指南](docs/DEPLOYMENT.zh-CN.md)
+[发行下载](https://github.com/jilinker/airmux-rs-public/releases/latest) · [Docker Hub](https://hub.docker.com/r/jaelinker/airmux) · [部署指南](docs/DEPLOYMENT.zh-CN.md)
 
-源码由私有仓库维护；此公共仓库提供部署文档、脱敏截图和发行文件。
+此仓库只分发安装示例、版本清单和发行说明。源码在私有仓库维护。
 
-## 安装与更新
+## 安装
 
-部署只需 **三个文件、三步操作**，前提是已经安装 Docker 与 Compose 插件。默认 Compose 自带 PostgreSQL，使用已有数据库可选择[外置 PG 方案](docs/DEPLOYMENT.zh-CN.md#外置-postgresql)。
+下载同版本的 compose.yaml、config.yaml 与 .env 到独立目录，例如 /srv/airmux。示例由本仓库提供，必改数据库密码、管理员密码、稳定加密主密钥、更新凭据、公开访问地址及部署绝对路径。
 
-1. 下载 [config.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml) 和 [compose.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml)，放在 `/srv/airmux`；按文件内中文注释修改管理员、数据库密码、密钥、更新凭据与访问地址。
-2. 下载 [.env](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env)，填入相同数据库密码；镜像、端口与目录按需替换。执行：
+```sh
+cd /srv/airmux
+chmod 600 config.yaml .env
+docker compose config --quiet
+docker compose up -d --wait
+docker compose ps
+```
 
-   ```sh
-   cd /srv/airmux
-   chmod 600 config.yaml .env
-   docker compose up -d --wait
-   ```
+默认镜像为 `docker.io/jaelinker/airmux:v0.5.0`，默认端口为 8080。首次管理员登录需修改密码。已有 PostgreSQL 使用 compose.external.yaml，具体配置和恢复方式见 [中文部署指南](docs/DEPLOYMENT.zh-CN.md)。程序参数归 config.yaml，Docker 发布参数归 Compose 和 .env，管理页动态设置归数据库。
 
-3. 执行 `docker compose ps`、`docker compose logs --tail=50 api`，访问 `http://服务器IP:8080` 验证登录。
+`0.5.0` 是全新数据库模型，旧 `0.4.x` 不支持直接升级。使用独立空库安装并保管原库与原密钥；新基线后续版本使用增量 SQL。
 
-首次建表、迁移与管理员初始化由 Rust 启动自动完成。无需克隆仓库、安装 Python 或运行管理脚本。详细修改说明见[中文部署指南](docs/DEPLOYMENT.zh-CN.md) · [English](docs/DEPLOYMENT.md)。
+管理员通过品牌旁版本徽标打开更新弹窗，检查发行、准备镜像并选择维护时机重启。失败后停止服务并保留备份供人工恢复，不自动回滚。
 
-## 功能
-
-支持订阅源与节点、配置方案与模板、路由与 DNS、脱敏预览与发布、客户端访问链接及系统更新。
-
-## 界面预览
-
-![概览：个人资源统计与最近活动，敏感信息已打码](docs/images/overview.jpg)
-
-![配置方案：代理组、默认入口、兜底和独立家宽分组，方案名称已打码](docs/images/plans.jpg)
-
-![访问链接：版本策略、滑动开关与管理操作，名称和时间已打码](docs/images/links.jpg)
+本轮暂不验证 Loon；真实邮件投递和 SSH 实服连接需在部署环境验证。具体已验收范围见对应版本发行说明。

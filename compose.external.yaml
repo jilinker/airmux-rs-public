@@ -1,12 +1,10 @@
-# 外置 PostgreSQL：下载后保存为 compose.yaml，仍只需 config.yaml、compose.yaml、.env。
-# 连接信息填入 config.yaml；远程 PG 设置 updater.enabled: false。
-name: airmux
+# Docker 编排参数由此文件及同目录 env 文件提供
+name: ${AIRMUX_PROJECT_NAME:-airmux}
 services:
   api:
-    platform: linux/amd64
+    platform: ${AIRMUX_PLATFORM:-linux/amd64}
     image: ${AIRMUX_APP_IMAGE:-${AIRMUX_IMAGE_REPOSITORY}:${AIRMUX_VERSION}}
     restart: unless-stopped
-    # 用 host.docker.internal 连接宿主机 PG；远程 PG 直接使用其可达地址。
     extra_hosts: ["host.docker.internal:host-gateway"]
     entrypoint: ["/usr/local/bin/airmux-api"]
     environment:
@@ -14,43 +12,53 @@ services:
     volumes:
       - ssh-host-keys:/var/lib/airmux-ssh
       - type: bind
-        source: ./config.yaml
+        source: ${AIRMUX_CONFIG_FILE:-./config.yaml}
         target: /etc/airmux/config.yaml
         read_only: true
         bind: {create_host_path: false}
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/health/ready',timeout=2)"]
+      test: ["CMD", "python3", "/opt/airmux/deploy/healthcheck.py"]
       interval: 10s
       timeout: 4s
       retries: 12
   frontend:
-    platform: linux/amd64
+    platform: ${AIRMUX_PLATFORM:-linux/amd64}
     image: ${AIRMUX_APP_IMAGE:-${AIRMUX_IMAGE_REPOSITORY}:${AIRMUX_VERSION}}
     restart: unless-stopped
     depends_on:
       api: {condition: service_healthy}
-    entrypoint: ["/usr/sbin/nginx"]
-    command: ["-g", "daemon off;"]
+    entrypoint: ["python3", "/opt/airmux/deploy/frontend.py"]
+    environment:
+      AIRMUX_CONFIG: /etc/airmux/config.yaml
     ports:
       - "${AIRMUX_HTTP_BIND:-0.0.0.0}:${AIRMUX_HTTP_PORT:-8080}:80"
+    volumes:
+      - type: bind
+        source: ${AIRMUX_CONFIG_FILE:-./config.yaml}
+        target: /etc/airmux/config.yaml
+        read_only: true
+        bind: {create_host_path: false}
   updater:
-    # 仅同一 Docker 的已有 PG 容器可备份更新；.env 设置 COMPOSE_PROFILES=updates。
     profiles: [updates]
-    platform: linux/amd64
-    image: ${AIRMUX_IMAGE_REPOSITORY}:${AIRMUX_VERSION}
+    platform: ${AIRMUX_PLATFORM:-linux/amd64}
+    image: ${AIRMUX_UPDATER_IMAGE:-${AIRMUX_IMAGE_REPOSITORY}:${AIRMUX_VERSION}}
     restart: unless-stopped
     entrypoint: ["python3", "/opt/airmux/deploy/updater.py"]
     environment:
       AIRMUX_CONFIG: /etc/airmux/config.yaml
+      AIRMUX_DEPLOY_DIR: ${AIRMUX_DEPLOY_DIR:?set absolute deployment directory}
+      AIRMUX_IMAGE_REPOSITORY: ${AIRMUX_IMAGE_REPOSITORY:?set image repository}
+      AIRMUX_PROJECT_NAME: ${AIRMUX_PROJECT_NAME:-airmux}
+      AIRMUX_DATABASE_CONTAINER: ${AIRMUX_DATABASE_CONTAINER:-}
     volumes:
       - type: bind
-        source: ./config.yaml
+        source: ${AIRMUX_CONFIG_FILE:-./config.yaml}
         target: /etc/airmux/config.yaml
         read_only: true
         bind: {create_host_path: false}
       - type: bind
-        source: ${AIRMUX_DEPLOY_DIR:-/srv/airmux}
-        target: ${AIRMUX_DEPLOY_DIR:-/srv/airmux}
+        source: ${AIRMUX_DEPLOY_DIR:?set absolute deployment directory}
+        target: ${AIRMUX_DEPLOY_DIR:?set absolute deployment directory}
         bind: {create_host_path: false}
       - /var/run/docker.sock:/var/run/docker.sock
       - updater-data:/var/lib/airmux-updater
@@ -59,6 +67,5 @@ volumes:
   updater-data:
 networks:
   default:
-    # 已有 PG 容器：填写它所在的网络，EXTERNAL=true；远程 PG 保持默认。
     name: ${AIRMUX_NETWORK_NAME:-airmux_default}
     external: ${AIRMUX_NETWORK_EXTERNAL:-false}

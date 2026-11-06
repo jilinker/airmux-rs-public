@@ -1,139 +1,60 @@
-# Docker Compose 部署：三步启动
+# Docker Compose 部署与配置
 
-**简体中文** · [English](DEPLOYMENT.md) · [返回 README](../README.md)
+0.5.0 使用全新数据模型与配套镜像和 Compose。旧 0.4.x 安装不能直接升级，必须使用独立空库安装；新基线后续使用增量 SQL 升级，保留现有数据。镜像为 docker.io/jaelinker/airmux，平台为 linux/amd64。节点、两层方案、访问链接、邮箱邀请与系统更新已接入；本地更新和恢复演练通过。Loon 本轮暂不验证，真实 SMTP 投递及 SSH 实服连接未在本次部署验收中执行。
 
-准备好 Docker Engine 和 Compose 插件即可，支持 `linux/amd64`。只需 **`config.yaml`、`compose.yaml`、`.env`** 三个文件，无需克隆仓库、安装 Python 或执行初始化脚本。
+## 文件职责
 
-**默认由 Compose 启动 PostgreSQL 17**，无需另外安装数据库。使用已有数据库见[外置 PostgreSQL](#外置-postgresql)。
+| 文件 | 修改内容 |
+| --- | --- |
+| compose.yaml | 服务 网络 依赖 挂载 数据卷 健康检查与重启策略 |
+| .env | 镜像 版本 平台 项目名 宿主端口 部署目录与 PostgreSQL 首次初始化值 |
+| config.yaml | 数据库连接 程序监听 CORS 密钥 日志 首位管理员与更新器程序参数 |
 
-## 1. 下载配置，按中文注释修改
+API 环境变量只定位程序 YAML，不以 .env 覆盖程序参数。动态业务设置应由管理页写入数据库，不再复制到 YAML。config.yaml 不接受旧 deployment 段。
 
-在服务器创建部署目录，下载公共仓库的两个 YAML 文件：
+## 首次安装
+
+1. 安装 Docker 和 Compose 插件，创建独立部署目录，例如 /srv/airmux。
+2. 从同一兼容发行版本获取 compose.yaml config.yaml .env，放在该目录。使用源码示例时将 .env.example 复制为 .env。
+3. 在 config.yaml 替换数据库密码 管理员初始密码 Base64 主密钥和更新凭据。可用 openssl rand -base64 32 生成主密钥，openssl rand -hex 32 生成更新凭据。保管原主密钥，后续更新不能随意更换。
+4. 在 .env 设置镜像版本或固定摘要，使 POSTGRES_PASSWORD 与应用 database.url 中的密码一致。AIRMUX_DEPLOY_DIR 使用部署目录的绝对路径，AIRMUX_CONFIG_FILE 指向本份 YAML。
+5. 按访问地址设置 server.allowed_origins 和 server.public_base_url。HTTPS 使用 server.cookie_secure 为 true。空库必须填写 administrator.email 和 administrator.password，邮箱视为已验证但首次登录必须改密。已有管理员时这些初始化值不覆盖数据库账号；旧 administrator.username 不再接受。管理员配置并启用 SMTP 后可邀请邮箱账号，临时密码或确认链接首次登录后必须设置新密码。
 
 ```sh
-mkdir -p /srv/airmux
 cd /srv/airmux
-curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml -o config.yaml
-curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml -o compose.yaml
-```
-
-也可以直接下载：[config.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml) · [compose.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml)。文件已提供中文注释，`compose.yaml` 默认不需要修改。
-
-编辑 `config.yaml`：
-
-| 配置 | 要修改的内容 |
-| --- | --- |
-| `database.url` | 替换 `CHANGE_ME_DATABASE_PASSWORD`，建议密码只用字母、数字、下划线或连字符；下一步在 `.env` 填同一密码。 |
-| `administrator.username` / `password` | 设置首次管理员账号与密码。密码至少 8 位，包含大小写字母；账号默认 `admin`。 |
-| `security.encryption_key` | 填入 `openssl rand -base64 32` 的输出，升级时保留此值。 |
-| `updater.token` | 填入 `openssl rand -hex 32` 的输出，用于应用内部更新鉴权。 |
-| `server.allowed_origins` | 远程访问时填写实际地址，如 `http://192.168.1.10:8080`。HTTPS 填写域名地址并把 `cookie_secure` 改为 `true`。 |
-| `server.public_base_url` | 使用规则集库时必填：设置客户端可访问的 HTTP(S) origin，如 `https://airmux.example.com`，不带路径或查询参数；反向代理需转发 `/sub/`。既有直接 URL 模式无需填写。 |
-
-其余保持默认。若更换部署目录，修改 `deployment.directory`，并与下一步 `.env` 的目录保持一致。
-
-## 2. 下载 .env，启动 Compose
-
-```sh
-curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env -o .env
-```
-
-直接下载：[.env](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env)。**修改 `POSTGRES_PASSWORD`，与 `config.yaml` 中的数据库密码一致。** 以下参数仅在有需要时替换：
-
-| 参数 | 默认值 / 用途 |
-| --- | --- |
-| `AIRMUX_IMAGE_REPOSITORY` | 已填写公开镜像地址，通常无需修改，也无需 Docker 登录。 |
-| `AIRMUX_VERSION` | 已填写发行版本，可替换为其他兼容版本。 |
-| `AIRMUX_HTTP_PORT` / `AIRMUX_HTTP_BIND` | `8080` / `0.0.0.0`；更换端口时同步修改 `allowed_origins`。 |
-| `AIRMUX_DEPLOY_DIR` | `/srv/airmux`；必须是这三个文件所在的绝对路径，与 `deployment.directory` 一致。 |
-
-保存后启动：
-
-```sh
 chmod 600 config.yaml .env
+docker compose config --quiet
 docker compose up -d --wait
-```
-
-数据库、API、前端与更新程序由 Compose 启动。API 从只读挂载的 `config.yaml` 读取配置，通过 SQLx 自动建表、执行待完成迁移并创建首次管理员；已有管理员和数据不会被覆盖。
-
-默认数据库用户和库名均为 `airmux`，API 连接 `postgres:5432`，不向宿主机暴露数据库端口。数据保存在 `postgres-data` 卷；`.env` 的 `POSTGRES_PASSWORD` 只在空数据卷首次初始化时设置密码，修改它不会重置已有密码。
-
-## 3. 检查启动结果
-
-```sh
 docker compose ps
 docker compose logs --tail=50 api
 ```
 
-`api`、`postgres` 应显示 `healthy`，`frontend`、`updater` 应显示 `Up`。打开 `http://服务器IP:8080`，使用配置的管理员账号登录，首次登录后修改密码。
+默认访问端口为 8080。宿主公开端口由 .env 的 AIRMUX_HTTP_PORT 控制，程序内部监听由 config.yaml 的 server.listen 控制。容器中使用 0.0.0.0 监听；前端代理 健康检查与更新就绪检查从 YAML 读取 API 端口。
 
-如启动失败，优先检查配置文件权限、密钥格式、两个文件的数据库密码，以及实际访问地址是否加入 `allowed_origins`。
-
-停止服务使用 `docker compose down`，保留数据时不要加 `-v`。日常更新点击侧栏版本号操作，更新程序会维护 `.env` 中的镜像覆盖值。修改配置后执行 `docker compose up -d --force-recreate --wait`；手动切换版本时先备份，并清空 `.env` 的 `AIRMUX_APP_IMAGE` 覆盖值。
-
-已有部署升级时保留原数据库、加密密钥与目录；不要覆盖已有配置。v0.1.2 的旧 `.compose.env` / `runtime.env` 编排仍受支持，无需为文档变化重新初始化数据库。
-
-0.4.2 起支持 SSH 下载代理。现有部署启用密码认证前，对照新版 Compose，在 API 的 `volumes` 添加 `ssh-host-keys:/var/lib/airmux-ssh`，并在顶层 `volumes` 声明 `ssh-host-keys`，然后重新创建 API；保留自己的其他挂载和部署设置。升级器保留原 Compose 文件，此卷让首次自动记录的主机公钥在容器重建后继续保留。新安装已包含该卷。
-
-### 准备升级时无法确认当前版本
-
-当前版本来自运行中 API 容器的镜像标签。`.env` 的 `AIRMUX_VERSION` 仅用于选择镜像，修改它不能修复版本识别。
-
-先核对 `config.yaml` 的 `deployment.directory` 和 `.env` 的 `AIRMUX_DEPLOY_DIR`：二者必须等于三个部署文件所在的实际绝对路径。例如部署在 `/opt/airmux-rs`，两个值都应填写 `/opt/airmux-rs`。同时，`deployment.project_name` 必须与实际 Compose 项目名一致，可通过以下命令查看：
-
-```sh
-docker inspect "$(docker compose ps -q api)" --format '{{index .Config.Labels "com.docker.compose.project"}} {{index .Config.Labels "org.opencontainers.image.version"}}'
-```
-
-修改目录、项目名或挂载后，在原部署目录执行 `docker compose up -d --force-recreate --no-deps --wait api updater`，让 API 与更新器重新读取配置。API 会短暂重启，数据库和数据卷保持原样。然后重试准备升级。若仍失败，检查更新器是否挂载 `/var/run/docker.sock`，以及容器内 Docker/Compose 能否正常执行。
+更改 .env 不会修改已有 PostgreSQL 密码，实际轮换需先修改数据库并同步应用连接，不能只更改 POSTGRES_PASSWORD。
 
 ## 外置 PostgreSQL
 
-仍按上面三步部署，仅在第 1 步将外置版本下载为 **`compose.yaml`**，不需要叠加其他 Compose 文件：
+用同版 compose.external.yaml 替换部署目录的 compose.yaml，再修改 config.yaml 的 database.url。应用不会创建外部数据库，账号需有建表和迁移权限。宿主机数据库可通过 host.docker.internal 访问；加入既有 Docker 网络时配置 .env 中的 AIRMUX_NETWORK_NAME 和 AIRMUX_NETWORK_EXTERNAL。
 
-```sh
-curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.external.yaml -o compose.yaml
-```
+启用在线更新时必须设置 AIRMUX_DATABASE_CONTAINER，指向可执行 pg_dump 与 pg_restore 的 PostgreSQL 容器。当前更新器不直接备份远程非容器数据库；这种情况应关闭 updater.enabled，移除 COMPOSE_PROFILES 中的 updates，人工备份和更新。
 
-此版本不创建、启动或管理 PostgreSQL。提前准备好已有数据库和账号，账号须能执行建表及迁移。API 自动初始化表和首次管理员，**不会创建数据库本身**。`.env` 的 `POSTGRES_PASSWORD` 不再使用；数据库连接信息集中填写在 `config.yaml`。
+## 更新与人工恢复
 
-### 远程 PG 或宿主机 PG
+config.yaml 的 updater.enabled 和 .env 的 COMPOSE_PROFILES=updates 分别声明程序配置及更新器服务。管理员点击左上品牌旁版本徽标打开系统更新弹窗。检查更新只读取发行信息；下载并更新直接准备镜像，无二次确认；准备完成后点击立即重启，并确认维护后执行。打开弹窗只读取状态。
 
-修改 `config.yaml` 中的以下值，其余必改项与默认部署相同：
+更新器需要 Docker socket 以及宿主和容器完全相同的可写部署目录。Compose 只显式传入镜像仓库 部署目录 项目名 目标数据库容器四个编排参数，不将完整 .env 注入 API 或更新器。
 
-```yaml
-database:
-  url: "postgres://airmux:YOUR_PASSWORD@db.example.com:5432/airmux"
-  max_connections: 10
-updater:
-  enabled: false
-```
+默认状态与备份路径 /var/lib/airmux-updater 必须持久化。修改 updater.state_directory 时同步调整 Compose 卷目标。使用 token_file 或 encryption_key_file 时，按各消费服务声明只读文件挂载；私有镜像仓库 Docker 凭据也通过 Compose 单独挂载。
 
-地址必须能从 API 容器访问。宿主机 PG 可将 `db.example.com` 替换为 `host.docker.internal`；`localhost` 指向 API 容器本身。按数据库要求设置 TLS，例如连接串追加 `?sslmode=require`，并允许来自容器的数据库连接。
+准备时核对当前及目标镜像的数据库代际标签，并在无网络、只读且不挂载数据库的临时容器中核对目标 SQL 文件与公开发行清单的 SHA256。旧安装或清单不符在停机前阻断。执行前再次核对运行镜像未变化。
 
-`.env` 保持 `AIRMUX_NETWORK_EXTERNAL=false`、`COMPOSE_PROFILES=`。执行 `docker compose up -d --wait` 后，检查 `api` 为 `healthy`、`frontend` 为 `Up` 即可。当前在线更新需要通过 Docker 备份 PG，因此此模式关闭更新程序；升级前通过数据库自己的备份方式备份，再按上文手动切换镜像版本。
+更新顺序为校验目标镜像 停止 API 备份并校验数据库 写入 .env 的新应用镜像 迁移 启动并检查 API 更新前端。更新不会重写 config.yaml 或覆盖 .env 其他字段；更新器自身镜像由运维在后续维护窗口重建。
 
-### 同一 Docker 中已有的 PG 容器
+执行失败进入 needs_recovery 并尝试停止 API，停止失败会明确记录无法确认停止状态。API 停止后网页无法代理读取更新器，界面只继续观察并提示维护者检查服务器，不将网络错误当作确定的失败阶段。先保留更新状态 数据库备份 原主密钥及部署文件，再按失败阶段恢复数据库与原镜像。若迁移已经执行，不可只回退镜像并假定旧程序兼容新表。恢复后检查健康和业务数据，不绕过迁移校验和或删除迁移记录。
 
-让应用加入已有 PG 所在的网络，并使用其容器名作为连接地址。例如已有容器 `local-postgres`、网络 `local-postgres_default`，在 `.env` 修改：
+源码辅助工具 deploy/manage.py 可在新目录初始化三份文件，render 只检查配置一致性，不重写 .env。直接使用 Compose 不需要该工具；docker compose config --quiet 只验证编排语法，不能代替启动时的程序 YAML 校验。
 
-```dotenv
-AIRMUX_NETWORK_NAME=local-postgres_default
-AIRMUX_NETWORK_EXTERNAL=true
-COMPOSE_PROFILES=updates
-```
+人工恢复时先读取持久化 state.json 的 phase、steps、backup 和 sourceImage，再核对 Docker 中的真实运行情况。sourceImage 是准备时实际运行的本地不可变镜像标识；恢复完成前不要清理该镜像或更新状态。对备份先执行 pg_restore --list 验证。无效或未完成的备份不能用于恢复。
 
-在 `config.yaml` 中将 `database.url` 指向实际数据库，并在已有配置节中设置：
-
-```yaml
-deployment:
-  database_container: "local-postgres"
-updater:
-  enabled: true
-```
-
-保留 `deployment` 与 `updater` 的其他字段，包括更新凭据及部署目录。更新程序通过 `docker exec` 在此 PG 容器内执行备份；确认该容器的 `pg_dump` / `pg_restore` 能以连接串的用户访问数据库，再启用在线更新。若不启用在线更新，保持 `COMPOSE_PROFILES=` 并设置 `updater.enabled: false`。
-
-先启动已有 PG，再执行相同的 `docker compose up -d --wait`。此时不会创建第二个 PG 或新数据库，`docker compose down` 也不会停止已有 PG。
-
-Compose 的网络和可选服务行为参考 [Docker 网络说明](https://docs.docker.com/compose/how-tos/networking/)与 [Profiles 说明](https://docs.docker.com/compose/how-tos/profiles/)。
+若迁移尚未开始，核对数据库未改变后恢复原镜像。若迁移已经运行，将验证后的备份恢复到独立空数据库，先验证数据，再在 config.yaml 切换到恢复库，并将 .env 的 AIRMUX_APP_IMAGE 设为原镜像。保留失败库用于核查，不在业务库中执行隐含删除。启动 API 和前端，确认 /health/ready、登录与业务数据后，再由维护者归档本次更新状态。待恢复状态不可在网页强行清除。

@@ -2,39 +2,28 @@
 
 [简体中文](README.md) · **English**
 
-Airmux RS is a configuration workspace for managing subscription sources, configuration plans, published versions, and client access links.
+Manage subscription sources and manual nodes, then generate Mihomo YAML or native Loon configurations through common and client-specific plans. Includes private per-user resources, invitation login, remote rules, cached subscription links and Docker Compose updates.
 
-**Rust API · Vue 3 · PostgreSQL · Docker / linux/amd64**
+**Rust API · Vue 3 · PostgreSQL 17 · Docker / linux/amd64**
 
-[Download](https://github.com/jilinker/airmux-rs-public/releases/latest) · [Deployment guide](docs/DEPLOYMENT.md)
+[Releases](https://github.com/jilinker/airmux-rs-public/releases/latest) · [Docker Hub](https://hub.docker.com/r/jaelinker/airmux) · [Deployment](docs/DEPLOYMENT.md)
 
-Source code is maintained privately. This public repository distributes deployment documentation, redacted screenshots, and release metadata.
+This repository distributes installation examples, version manifests and release notes. Source code is maintained privately.
 
-## Installation and updates
+Download matching compose.yaml, config.yaml and .env into a separate directory such as /srv/airmux. Replace the database and administrator passwords, stable encryption key, updater token, public URL and absolute deployment path.
 
-Deployment needs **three files and three steps**, with Docker and the Compose plugin installed. Compose includes PostgreSQL by default; an [external PG option](docs/DEPLOYMENT.md#external-postgresql) is available for an existing database.
+```sh
+cd /srv/airmux
+chmod 600 config.yaml .env
+docker compose config --quiet
+docker compose up -d --wait
+docker compose ps
+```
 
-1. Download [config.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml) and [compose.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml) into `/srv/airmux`. Edit the administrator credentials, database password, encryption key, update token, and access origins.
-2. Download [.env](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env), set the same database password, and change the image, port, or directory only if needed. Run:
+The image is `docker.io/jaelinker/airmux:v0.5.0`; the default HTTP port is 8080. The first administrator must change the initial password. Use compose.external.yaml for an existing PostgreSQL server. See the deployment guide for configuration ownership and recovery.
 
-   ```sh
-   cd /srv/airmux
-   chmod 600 config.yaml .env
-   docker compose up -d --wait
-   ```
+Version 0.5.0 introduces a new database generation. Direct upgrades from 0.4.x are unsupported: install into a separate empty database and preserve the old database and encryption key. Later versions use incremental SQL migrations.
 
-3. Run `docker compose ps` and `docker compose logs --tail=50 api`, then verify login at `http://SERVER_IP:8080`.
+Administrators open the updater from the version badge beside the brand, prepare an image and choose when to restart. Failure stops the API and retains backup metadata for manual recovery; there is no automatic rollback.
 
-Rust startup handles table creation, migrations, and the first administrator automatically. No repository clone, Python installation, or management script is needed. See the [English deployment guide](docs/DEPLOYMENT.md) · [中文部署指南](docs/DEPLOYMENT.zh-CN.md) for the settings to edit.
-
-## Features
-
-Manage subscription sources and nodes, configuration plans and templates, routing and DNS, redacted previews and publications, client access links, and system updates.
-
-## Screenshots
-
-![Overview: personal resource statistics and recent activity, with sensitive fields masked](docs/images/overview.jpg)
-
-![Configuration plans: proxy groups, default and fallback roles, and a residential group; plan names masked](docs/images/plans.jpg)
-
-![Access links: version policies, switches, and management actions; names and timestamps masked](docs/images/links.jpg)
+Loon validation is deferred in this round. Verify actual SMTP delivery and SSH server connections in your deployment. Version-specific release notes state the verified scope.

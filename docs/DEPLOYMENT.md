@@ -1,139 +1,58 @@
-# Docker Compose deployment in three steps
+# Docker Compose deployment and configuration
 
-[简体中文](DEPLOYMENT.zh-CN.md) · **English** · [Back to README](../README.en.md)
+Version 0.5.0 starts a new data model and requires matching images and Compose files. Existing 0.4.x installations must use a separate empty database; later versions use incremental SQL migrations. The image is docker.io/jaelinker/airmux for linux/amd64. Nodes, two-layer plans, access links, invitations and system updates are connected. Local update and recovery drills passed. Loon validation is deferred; live SMTP delivery and SSH server connections were not exercised in this deployment run.
 
-Install Docker Engine and the Compose plugin first. The image supports `linux/amd64`. Deployment needs only **`config.yaml`, `compose.yaml`, and `.env`**; no repository clone, Python installation, or initialization script.
+## Configuration ownership
 
-**Compose starts PostgreSQL 17 by default**; no separate database installation is required. For an existing database, see [External PostgreSQL](#external-postgresql).
+| File | Responsibility |
+| --- | --- |
+| compose.yaml | Services, networks, dependencies, mounts, volumes, health checks and restart policy |
+| .env | Images, versions, platform, project name, host ports, deployment paths and PostgreSQL initialization |
+| config.yaml | Database connection, program listener, CORS, secrets, logging, initial administrator and updater settings |
 
-## 1. Download and edit the configuration
+The API environment only locates the program YAML. It does not override program settings from .env. Dynamic business settings belong in the database. The program rejects the previous deployment section.
 
-Create the deployment directory and download the two YAML files from the public repository:
+## First installation
+
+1. Install Docker and the Compose plugin. Create a dedicated directory such as /srv/airmux.
+2. Obtain compose.yaml, config.yaml and .env from the same compatible release. Rename the source .env.example to .env when using source examples.
+3. Replace the database password, initial administrator password, Base64 encryption key and updater token in config.yaml. Use openssl rand -base64 32 for the key and openssl rand -hex 32 for the token. Preserve the encryption key across updates.
+4. Select the image version or digest in .env. Match POSTGRES_PASSWORD to the password in database.url. Set AIRMUX_DEPLOY_DIR to the absolute deployment directory and AIRMUX_CONFIG_FILE to this YAML file.
+5. Set server.allowed_origins and server.public_base_url to the actual access address. Enable server.cookie_secure for HTTPS. A fresh database requires administrator.email and administrator.password. The initial email is verified but the first login must change its password. Existing administrators are never reset by bootstrap values. Legacy administrator.username is rejected. Configure and test SMTP in System settings before inviting other accounts. Invitation login verifies the email and requires a new password.
 
 ```sh
-mkdir -p /srv/airmux
 cd /srv/airmux
-curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml -o config.yaml
-curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml -o compose.yaml
-```
-
-Direct downloads: [config.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/config.yaml) · [compose.yaml](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.yaml). Both files include Chinese comments. Keep the default Compose file.
-
-Edit `config.yaml`:
-
-| Setting | Required change |
-| --- | --- |
-| `database.url` | Replace `CHANGE_ME_DATABASE_PASSWORD`. Use letters, digits, underscores, or hyphens to avoid URL escaping; enter the same password in `.env` in step 2. |
-| `administrator.username` / `password` | Choose the initial administrator credentials. The password needs at least 8 characters, including upper and lower case letters; the default username is `admin`. |
-| `security.encryption_key` | Paste the output of `openssl rand -base64 32`. Preserve this key during upgrades. |
-| `updater.token` | Paste the output of `openssl rand -hex 32` for internal update authentication. |
-| `server.allowed_origins` | For remote access, add the actual origin, such as `http://192.168.1.10:8080`. For HTTPS, use your domain origin and set `cookie_secure` to `true`. |
-| `server.public_base_url` | Required when using the rule-set library: set a client-reachable HTTP(S) origin, such as `https://airmux.example.com`, without a path or query. Forward `/sub/` through the reverse proxy. Existing direct URL mode does not require this setting. |
-
-Keep other defaults. If using another directory, set `deployment.directory` and use the same path in `.env` in the next step.
-
-## 2. Download .env and start Compose
-
-```sh
-curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env -o .env
-```
-
-Direct download: [.env](https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/.env). **Set `POSTGRES_PASSWORD` to the database password in `config.yaml`.** Change the remaining parameters only if needed:
-
-| Parameter | Default / purpose |
-| --- | --- |
-| `AIRMUX_IMAGE_REPOSITORY` | The public image repository is already filled in; no Docker login is needed. |
-| `AIRMUX_VERSION` | A released version is already filled in; another compatible version may be selected. |
-| `AIRMUX_HTTP_PORT` / `AIRMUX_HTTP_BIND` | `8080` / `0.0.0.0`; update `allowed_origins` when changing the port. |
-| `AIRMUX_DEPLOY_DIR` | `/srv/airmux`; the absolute directory containing all three files, matching `deployment.directory`. |
-
-Save and start:
-
-```sh
 chmod 600 config.yaml .env
+docker compose config --quiet
 docker compose up -d --wait
-```
-
-Compose starts PostgreSQL, the API, frontend, and updater. The API reads the mounted `config.yaml` in read-only mode, applies pending SQLx migrations, and creates the first administrator automatically. Existing accounts and data are preserved.
-
-The default database and user are both `airmux`. The API connects to `postgres:5432`; the database port is not published to the host. Data persists in the `postgres-data` volume. `POSTGRES_PASSWORD` only sets the password when initializing an empty volume; editing it does not reset an existing password.
-
-## 3. Check startup
-
-```sh
 docker compose ps
 docker compose logs --tail=50 api
 ```
 
-`api` and `postgres` should be `healthy`; `frontend` and `updater` should be `Up`. Open `http://SERVER_IP:8080` and sign in with the configured administrator credentials. Change the password after the first login.
+The default host port is 8080. AIRMUX_HTTP_PORT controls the published host port; server.listen in YAML controls the internal program listener. Use 0.0.0.0 inside containers. The frontend proxy, health check and updater readiness check read the API port from YAML.
 
-For startup failures, check file permissions, encryption key format, matching database passwords, and the actual origin in `allowed_origins`.
-
-Stop with `docker compose down`; omit `-v` to retain data. Click the sidebar version to update; the updater maintains the image override in `.env`. After editing configuration, run `docker compose up -d --force-recreate --wait`. Before switching versions manually, back up and clear the `AIRMUX_APP_IMAGE` override in `.env`.
-
-Preserve the database, encryption key, and deployment directory when upgrading an existing installation. The v0.1.2 `.compose.env` / `runtime.env` layout remains supported; documentation changes do not require database reinitialization.
-
-SSH download profiles are available from 0.4.2. Before enabling password authentication on an existing deployment, add `ssh-host-keys:/var/lib/airmux-ssh` to the API volumes and declare `ssh-host-keys` in the top-level volumes, following the new Compose file, then recreate the API. Preserve your other mounts and deployment settings. The updater keeps the existing Compose file; this volume retains automatically recorded host keys across container recreation. New installations already include it.
-
-### Current version cannot be confirmed during preparation
-
-The current version comes from the running API container's image label. `AIRMUX_VERSION` in `.env` selects an image; changing it does not fix version detection.
-
-Check that `deployment.directory` in `config.yaml` and `AIRMUX_DEPLOY_DIR` in `.env` both equal the actual absolute directory containing the three deployment files. For an installation in `/opt/airmux-rs`, set both to `/opt/airmux-rs`. Also ensure `deployment.project_name` matches the actual Compose project. Inspect the project and version labels with:
-
-```sh
-docker inspect "$(docker compose ps -q api)" --format '{{index .Config.Labels "com.docker.compose.project"}} {{index .Config.Labels "org.opencontainers.image.version"}}'
-```
-
-After correcting paths, project names, or mounts, run `docker compose up -d --force-recreate --no-deps --wait api updater` from the original deployment directory, then retry preparation. This briefly restarts the API while retaining the database and volumes. If detection still fails, check the updater's `/var/run/docker.sock` mount and Docker/Compose access inside the container.
+Changing .env does not rotate an existing PostgreSQL password. Rotate the actual database credential and update the application connection together. POSTGRES_PASSWORD only controls initialization.
 
 ## External PostgreSQL
 
-Follow the same three steps, but download the external variant as **`compose.yaml`** in step 1. No additional Compose override is needed:
+Replace compose.yaml with the matching compose.external.yaml and update database.url in config.yaml. Create the external database beforehand and grant schema and migration permissions. host.docker.internal can reach a host database. Set AIRMUX_NETWORK_NAME and AIRMUX_NETWORK_EXTERNAL when joining an existing Docker network.
 
-```sh
-curl -fL https://raw.githubusercontent.com/jilinker/airmux-rs-public/main/compose.external.yaml -o compose.yaml
-```
+Online updates require AIRMUX_DATABASE_CONTAINER to identify the PostgreSQL container that can run pg_dump and pg_restore. Direct backup of a remote database without a suitable container is unsupported. Disable updater.enabled, remove updates from COMPOSE_PROFILES and perform backups and updates manually for that deployment.
 
-This variant does not create, start, or manage PostgreSQL. Prepare an existing database and an account with permission to create tables and apply migrations. The API initializes tables and the first administrator; **it does not create the database itself**. `POSTGRES_PASSWORD` in `.env` is unused; configure the database connection in `config.yaml`.
+## Updates and manual recovery
 
-### Remote or host PostgreSQL
+updater.enabled declares program configuration and COMPOSE_PROFILES=updates starts the updater service. Administrators open the update modal from the version badge beside the brand. Checking reads release metadata. Download and update prepares the image immediately without a second confirmation. Restarting requires a maintenance confirmation. Opening the modal only reads status. Local Docker update and manual recovery drills passed; release-specific checks are documented separately.
 
-Change these values in `config.yaml`; other required settings are the same as the default deployment:
+The updater needs the Docker socket and a writable deployment directory at the same absolute path on the host and inside the container. Compose explicitly passes only the image repository, deployment directory, project name and database container. It does not inject the entire .env into the API or updater.
 
-```yaml
-database:
-  url: "postgres://airmux:YOUR_PASSWORD@db.example.com:5432/airmux"
-  max_connections: 10
-updater:
-  enabled: false
-```
+Persist /var/lib/airmux-updater. If updater.state_directory changes, adjust the Compose volume target. Mount token_file and encryption_key_file read-only in each consuming service when using file secrets. Private registry Docker credentials also require an explicit Compose mount.
 
-The address must be reachable from the API container. For host PostgreSQL, replace `db.example.com` with `host.docker.internal`; `localhost` refers to the API container itself. Configure TLS as required, for example by appending `?sslmode=require`, and allow database connections from the container.
+Preparation verifies database-generation labels on the running and target images and checks every target SQL checksum against the release manifest in a read-only container without network or database mounts. Legacy installations and mismatched SQL are rejected before downtime. Execution rechecks the running image identity.
 
-Keep `AIRMUX_NETWORK_EXTERNAL=false` and `COMPOSE_PROFILES=` in `.env`. Run `docker compose up -d --wait`, then check that `api` is `healthy` and `frontend` is `Up`. Online updates currently require a PG backup through Docker, so this mode disables the updater. Before upgrading manually, back up using your database's backup tools, then switch image versions as described above.
+The update flow validates the target image, stops the API, creates and validates a backup, changes the application image in .env, migrates, checks the API and updates the frontend. It preserves config.yaml and unrelated .env settings. Recreate the updater itself during a subsequent maintenance window to adopt its new image.
 
-### An existing PG container on the same Docker daemon
+Execution failures enter needs_recovery and attempt to stop the API. A failed stop is recorded as uncertain rather than successful. While the API is stopped the browser cannot proxy updater status and continues observing with server recovery guidance. Preserve the update state, backup, encryption key and deployment files. Restore the database and original image according to the failed stage. An image rollback alone may be incompatible with migrations that already ran. Check readiness and business data after recovery. Do not bypass migration checksums or erase migration records.
 
-Join the PG container's existing network and use its container name as the database host. For example, with container `local-postgres` on network `local-postgres_default`, edit `.env`:
+The optional source tool deploy/manage.py initializes three files in a fresh directory. Its render command verifies consistency without rewriting .env. Compose users do not need this tool. docker compose config --quiet validates orchestration syntax, not the program YAML that is validated at startup.
 
-```dotenv
-AIRMUX_NETWORK_NAME=local-postgres_default
-AIRMUX_NETWORK_EXTERNAL=true
-COMPOSE_PROFILES=updates
-```
-
-Point `database.url` in `config.yaml` at the actual database and set these values within the existing sections:
-
-```yaml
-deployment:
-  database_container: "local-postgres"
-updater:
-  enabled: true
-```
-
-Preserve the other `deployment` and `updater` fields, including the update token and deployment directory. The updater backs up through `docker exec` in this PG container. Ensure its `pg_dump` / `pg_restore` can access the database as the connection-string user before enabling online updates. To leave online updates disabled, keep `COMPOSE_PROFILES=` and set `updater.enabled: false`.
-
-Start the existing PG first, then run the same `docker compose up -d --wait`. No second PG or new database is created, and `docker compose down` does not stop the existing PG.
-
-See Docker's [networking guide](https://docs.docker.com/compose/how-tos/networking/) and [profiles guide](https://docs.docker.com/compose/how-tos/profiles/) for networking and optional services.
+For recovery inspect phase, steps, backup and sourceImage in the persistent state.json and confirm the real container state. Keep the original local image and validate the dump using pg_restore --list before restoring. If migrations ran, restore the verified dump to a separate empty database, verify it, then switch config.yaml and the original image in .env together. Preserve the failed database for investigation. After readiness, login and business checks succeed, the operator can archive the completed update state. Do not clear needs_recovery from the browser.
