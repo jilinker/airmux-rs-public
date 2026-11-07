@@ -1,0 +1,58 @@
+{
+  "version": "0.5.4",
+  "minimumVersion": "0.5.0",
+  "image": "docker.io/jaelinker/airmux@sha256:2fbd60ddfc5d2c927c39ab4e8df2f15f522e07550c1e17d9d9402c0071d09e62",
+  "architecture": "linux/amd64",
+  "commit": "95022cbc7b70d8528b34249c71f4859d06818ed7",
+  "prerelease": false,
+  "migrations": [
+    {
+      "name": "0001_baseline.sql",
+      "sha256": "cfeaac7c141ad560eb184a4ba3492e50c8ece41fa4204d032ffba78cf02816b7"
+    },
+    {
+      "name": "0002_rule_content_summary.sql",
+      "sha256": "1ed675853b9956f3225649ac617d654f8aa5691a4f52d75e8c1aa6d39d950098"
+    },
+    {
+      "name": "0003_default_regions.sql",
+      "sha256": "d9b8c652b7fd2cba92274bc1a80d85dfd8d2612b74219c7d2e1c33a3617670c3"
+    },
+    {
+      "name": "0004_object_comment_author.sql",
+      "sha256": "a6993298b4f4b4d74cfa83f95e0d5f2aeaa7deae6254babd009bdb31d0088117"
+    },
+    {
+      "name": "0005_plan_local_data.sql",
+      "sha256": "3a2cf7485ea6a3d534d87d71e2e0b16a729b89ab4c3c72112f11d967e5ada9af"
+    },
+    {
+      "name": "0006_client_native_dns.sql",
+      "sha256": "08a6b70d6055ae85239e21fd79aea8b7126443140cc15851f65b2cfec6ac0e44"
+    },
+    {
+      "name": "0007_access_link_lifecycle.sql",
+      "sha256": "9952f2e9daa93e77f5f56d5500b0520f76272fe752277482db998c389f693b06"
+    },
+    {
+      "name": "0008_plan_remote_rules.sql",
+      "sha256": "fecdb1761ae43b3b7bc0c7ec6092ec5f2af5cad9cdf61e9d2ced04013e8b87f0"
+    },
+    {
+      "name": "0009_invitation_login_link.sql",
+      "sha256": "370b5cb9da6556833351ba097fc365fe2c4533543356c27dbe936de12be523ff"
+    },
+    {
+      "name": "0010_optional_ssh_host_key.sql",
+      "sha256": "720f4695c8a43cf626de9b946660cbdb5e1cb9616798c0c74d1d5c76997a817e"
+    },
+    {
+      "name": "0011_node_search_server.sql",
+      "sha256": "078c9f77bfdbe172e06ced2f37536c8d0edf9564adae50f8a1101a3bb74f71b4"
+    },
+    {
+      "name": "0012_common_plan_sections.sql",
+      "sha256": "5aeadf6d602e64e8d0ddee7aa2480272b9c6ed11ed863a948aecdc6499b75276"
+    }
+  ]
+}
