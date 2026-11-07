@@ -1,6 +1,6 @@
 # Docker Compose deployment and configuration
 
-Version 0.5.0 starts a new data model and requires matching images and Compose files. Existing 0.4.x installations must use a separate empty database; later versions use incremental SQL migrations. The image is docker.io/jaelinker/airmux for linux/amd64. Nodes, two-layer plans, access links, invitations and system updates are connected. Local update and recovery drills passed. Loon validation is deferred; live SMTP delivery and SSH server connections were not exercised in this deployment run.
+Version 0.5.0 starts a new data model and requires matching images and Compose files. Existing 0.4.x installations must use a separate empty database; later versions use incremental SQL migrations. The image is docker.io/jaelinker/airmux for linux/amd64. Nodes, two-layer plans, access links, invitations and system updates are connected. Local update and recovery drills passed. Version 0.5.1 supports incremental upgrades from 0.5.0, with successful migration, failure shutdown and backup restoration drills completed. The user confirmed live SMTP delivery. Default SSH identities were verified against a temporary real server; verify external server access in your environment. Loon validation remains deferred.
 
 ## Configuration ownership
 
@@ -38,6 +38,12 @@ Changing .env does not rotate an existing PostgreSQL password. Rotate the actual
 Replace compose.yaml with the matching compose.external.yaml and update database.url in config.yaml. Create the external database beforehand and grant schema and migration permissions. host.docker.internal can reach a host database. Set AIRMUX_NETWORK_NAME and AIRMUX_NETWORK_EXTERNAL when joining an existing Docker network.
 
 Online updates require AIRMUX_DATABASE_CONTAINER to identify the PostgreSQL container that can run pg_dump and pg_restore. Direct backup of a remote database without a suitable container is unsupported. Disable updater.enabled, remove updates from COMPOSE_PROFILES and perform backups and updates manually for that deployment.
+
+## Default SSH identities and host records
+
+In 0.5.1, key authentication can omit the private key to use the API runtime user's default identity files or SSH agent. Password authentication still requires a password. Fingerprint and known_hosts records are optional. When omitted, SSH uses existing runtime records and the persistent file selected by fetch.ssh_known_hosts_file, records a first-seen host key and rejects subsequent key changes. Supply a fingerprint or explicit record to pin the host beforehand.
+
+Docker does not automatically read host identities. Add explicit read-only mounts for the required identity files, such as /root/.ssh/id_ed25519, to api in your private Compose configuration. Agent use requires an explicit socket mount and SSH_AUTH_SOCK. Never include private keys in distribution files. The default Compose persists /var/lib/airmux-ssh; retain that volume across upgrades.
 
 ## Updates and manual recovery
 

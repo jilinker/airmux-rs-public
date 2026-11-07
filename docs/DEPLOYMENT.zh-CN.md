@@ -1,6 +1,6 @@
 # Docker Compose 部署与配置
 
-0.5.0 使用全新数据模型与配套镜像和 Compose。旧 0.4.x 安装不能直接升级，必须使用独立空库安装；新基线后续使用增量 SQL 升级，保留现有数据。镜像为 docker.io/jaelinker/airmux，平台为 linux/amd64。节点、两层方案、访问链接、邮箱邀请与系统更新已接入；本地更新和恢复演练通过。Loon 本轮暂不验证，真实 SMTP 投递及 SSH 实服连接未在本次部署验收中执行。
+0.5.0 使用全新数据模型与配套镜像和 Compose。旧 0.4.x 安装不能直接升级，必须使用独立空库安装；新基线后续使用增量 SQL 升级，保留现有数据。镜像为 docker.io/jaelinker/airmux，平台为 linux/amd64。节点、两层方案、访问链接、邮箱邀请与系统更新已接入；本地更新和恢复演练通过。0.5.1 支持从 0.5.0 增量升级，已完成新增 SQL 的升级、失败停机与备份恢复演练。SMTP 实际投递由用户确认成功，SSH 默认身份已用临时真实服务器验证；外部服务器仍需按实际环境确认。Loon 本轮暂不验证。
 
 ## 文件职责
 
@@ -38,6 +38,12 @@ docker compose logs --tail=50 api
 用同版 compose.external.yaml 替换部署目录的 compose.yaml，再修改 config.yaml 的 database.url。应用不会创建外部数据库，账号需有建表和迁移权限。宿主机数据库可通过 host.docker.internal 访问；加入既有 Docker 网络时配置 .env 中的 AIRMUX_NETWORK_NAME 和 AIRMUX_NETWORK_EXTERNAL。
 
 启用在线更新时必须设置 AIRMUX_DATABASE_CONTAINER，指向可执行 pg_dump 与 pg_restore 的 PostgreSQL 容器。当前更新器不直接备份远程非容器数据库；这种情况应关闭 updater.enabled，移除 COMPOSE_PROFILES 中的 updates，人工备份和更新。
+
+## SSH 默认身份与主机记录
+
+0.5.1 的 SSH 密钥认证允许私钥留空，使用 API 运行用户的默认身份文件或 SSH agent。密码认证仍需填写密码。指纹和 known_hosts 记录均可不填，此时使用运行环境已有记录及 fetch.ssh_known_hosts_file 指定的持久化文件，首次公钥会被记录，已记录公钥变化时拒绝连接。需要预先锁定主机时，可填写指纹或显式公钥记录。
+
+Docker 不会自动使用宿主机密钥。需要宿主身份时，在私有 Compose 中给 api 显式只读挂载所需身份文件，例如 /root/.ssh/id_ed25519；使用 agent 时显式挂载套接字并设置 SSH_AUTH_SOCK。不要将私钥写入发行文件。默认 Compose 已持久化 /var/lib/airmux-ssh，升级时保留该卷。
 
 ## 更新与人工恢复
 
