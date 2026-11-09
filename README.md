@@ -22,7 +22,7 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-默认镜像为 `docker.io/jaelinker/airmux:v0.5.12`，默认端口为 8080。首次管理员登录需修改密码。已有 PostgreSQL 使用 compose.external.yaml，具体配置和恢复方式见 [中文部署指南](docs/DEPLOYMENT.zh-CN.md)。程序参数归 config.yaml，Docker 发布参数归 Compose 和 .env，管理页动态设置归数据库。
+默认镜像为 `docker.io/jaelinker/airmux:v0.5.13`，默认端口为 8080。首次管理员登录需修改密码。已有 PostgreSQL 使用 compose.external.yaml，具体配置和恢复方式见 [中文部署指南](docs/DEPLOYMENT.zh-CN.md)。程序参数归 config.yaml，Docker 发布参数归 Compose 和 .env，管理页动态设置归数据库。
 
 `0.5.0` 是全新数据库模型，旧 `0.4.x` 不支持直接升级。使用独立空库安装并保管原库与原密钥；新基线后续版本使用增量 SQL。
 
