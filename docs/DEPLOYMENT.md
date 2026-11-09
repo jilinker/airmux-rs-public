@@ -1,8 +1,10 @@
 # Docker Compose deployment and configuration
 
-Version 0.5.9 composes a unified plan from one base configuration and multiple feature configurations. The image is docker.io/jaelinker/airmux for linux/amd64, with a minimum upgrade version of 0.5.0. Existing 0.4.x installations require a separate empty database. The user confirmed live SMTP delivery. Default SSH identities were verified against a temporary real server; verify external server access in your environment. Loon validation remains deferred.
+Version 0.5.10 composes a unified plan from one base configuration and multiple feature configurations. The image is docker.io/jaelinker/airmux for linux/amd64, with a minimum upgrade version of 0.5.0. Existing 0.4.x installations require a separate empty database. The user confirmed live SMTP delivery. Default SSH identities were verified against a temporary real server; verify external server access in your environment. Loon validation remains deferred.
 
-**The new SQL migration in 0.5.9 deletes legacy common plans, client plans, related archives and all access links without migration or compatibility support.** Accounts, node sources, nodes, administrator regions and rule sets, system settings and migration history are retained. Back up the database and preserve the original encryption key before upgrading. Recreate configurations, plans and links afterward; previous links stop working. To recover legacy plans, restore the pre-upgrade backup into a separate database and use the original key and old image.
+0.5.10 adds no SQL migrations and retains existing composed plans when upgrading from 0.5.9.
+
+**Upgrading from a version older than 0.5.9 runs the SQL migration introduced in 0.5.9, which deletes legacy common plans, client plans, related archives and all access links without migration or compatibility support.** Accounts, node sources, nodes, administrator regions and rule sets, system settings and migration history are retained. Back up the database and preserve the original encryption key before upgrading. Recreate configurations, plans and links afterward; previous links stop working. To recover legacy plans, restore the pre-upgrade backup into a separate database and use the original key and old image.
 
 ## Configuration ownership
 

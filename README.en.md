@@ -20,11 +20,11 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-The image is `docker.io/jaelinker/airmux:v0.5.9`; the default HTTP port is 8080. The first administrator must change the initial password. Use compose.external.yaml for an existing PostgreSQL server. See the deployment guide for configuration ownership and recovery.
+The image is `docker.io/jaelinker/airmux:v0.5.10`; the default HTTP port is 8080. The first administrator must change the initial password. Use compose.external.yaml for an existing PostgreSQL server. See the deployment guide for configuration ownership and recovery.
 
 Version 0.5.0 introduces a new database generation. Direct upgrades from 0.4.x are unsupported: install into a separate empty database and preserve the old database and encryption key. Later versions use incremental SQL migrations.
 
-**Upgrading to 0.5.9 deletes all legacy common plans, client plans, related archives and access links without migration.** Accounts, sources, nodes, administrator reference data and system settings are retained. Back up the database and preserve the original encryption key before upgrading, then recreate configurations, plans and links.
+**Upgrading from a version older than 0.5.9 to this release runs the 0.5.9 migration, which deletes all legacy common plans, client plans, related archives and access links without migration.** Accounts, sources, nodes, administrator reference data and system settings are retained. Back up the database and preserve the original encryption key before upgrading, then recreate configurations, plans and links.
 
 Administrators open the updater from the version badge beside the brand, prepare an image and choose when to restart. Failure stops the API and retains backup metadata for manual recovery; there is no automatic rollback.
 
