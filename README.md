@@ -2,7 +2,7 @@
 
 **简体中文** · [English](README.en.md)
 
-管理多订阅源与手动节点，通过公共方案和客户端方案生成 Mihomo YAML 或 Loon 原生配置。个人资源按用户隔离，支持邀请登录、远程规则、访问链接缓存和 Docker Compose 系统更新。
+管理多订阅源与手动节点，通过一个基础配置和多个功能配置组合方案，生成 Mihomo YAML 或 Loon 原生配置。个人资源按用户隔离，支持配置共享与独立导入、邀请登录、远程规则、访问链接缓存和 Docker Compose 系统更新。
 
 **Rust API · Vue 3 · PostgreSQL 17 · Docker / linux/amd64**
 
@@ -22,9 +22,11 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-默认镜像为 `docker.io/jaelinker/airmux:v0.5.8`，默认端口为 8080。首次管理员登录需修改密码。已有 PostgreSQL 使用 compose.external.yaml，具体配置和恢复方式见 [中文部署指南](docs/DEPLOYMENT.zh-CN.md)。程序参数归 config.yaml，Docker 发布参数归 Compose 和 .env，管理页动态设置归数据库。
+默认镜像为 `docker.io/jaelinker/airmux:v0.5.9`，默认端口为 8080。首次管理员登录需修改密码。已有 PostgreSQL 使用 compose.external.yaml，具体配置和恢复方式见 [中文部署指南](docs/DEPLOYMENT.zh-CN.md)。程序参数归 config.yaml，Docker 发布参数归 Compose 和 .env，管理页动态设置归数据库。
 
 `0.5.0` 是全新数据库模型，旧 `0.4.x` 不支持直接升级。使用独立空库安装并保管原库与原密钥；新基线后续版本使用增量 SQL。
+
+**升级到 0.5.9 会清空旧公共方案、客户端方案、相关归档及全部访问链接，不迁移旧方案。** 账号、来源、节点、管理员基础资料及系统配置保留。升级前备份数据库并保管原加密主密钥，升级后重新创建配置、方案和链接。
 
 管理员通过品牌旁版本徽标打开更新弹窗，检查发行、准备镜像并选择维护时机重启。失败后停止服务并保留备份供人工恢复，不自动回滚。
 
