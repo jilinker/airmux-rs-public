@@ -20,7 +20,7 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-The image is `docker.io/jaelinker/airmux:v0.5.13`; the default HTTP port is 8080. The first administrator must change the initial password. Use compose.external.yaml for an existing PostgreSQL server. See the deployment guide for configuration ownership and recovery.
+The image is `docker.io/jaelinker/airmux:v0.5.14`; the default HTTP port is 8080. The first administrator must change the initial password. Use compose.external.yaml for an existing PostgreSQL server. See the deployment guide for configuration ownership and recovery.
 
 Version 0.5.0 introduces a new database generation. Direct upgrades from 0.4.x are unsupported: install into a separate empty database and preserve the old database and encryption key. Later versions use incremental SQL migrations.
 
